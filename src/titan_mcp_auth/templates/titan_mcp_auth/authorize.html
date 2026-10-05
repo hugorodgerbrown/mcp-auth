@@ -1,0 +1,22 @@
+{% extends "titan_mcp_auth/base.html" %}
+{% block title %}Connect {{ application.name|default:"an app" }}{% endblock %}
+{% block body %}
+{% if not error %}
+<form method="post">
+  {% csrf_token %}
+  {% for field in form %}{% if field.is_hidden %}{{ field }}{% endif %}{% endfor %}
+  <h1>Connect {{ application.name|default:"this app" }}?</h1>
+  <p>It will be able to act as you through this site's MCP tools.</p>
+  <p>You'll go back to <strong>{{ redirect_host }}</strong>.</p>
+  {% if redirect_is_loopback %}
+  <p><strong>That address is a program on your own computer, not a website.</strong> Only connect if you started it.</p>
+  {% endif %}
+  {% if form.errors %}<ul>{% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+  <button type="submit" name="allow" value="Authorize">Connect</button>
+  <button type="submit">Cancel</button>
+</form>
+{% else %}
+<h1>This connection can't go ahead</h1>
+<p>{{ error.description|default:error.error }}</p>
+{% endif %}
+{% endblock %}

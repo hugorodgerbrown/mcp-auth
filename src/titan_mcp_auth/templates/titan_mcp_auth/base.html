@@ -1,0 +1,12 @@
+{# Override titan_mcp_auth/base.html to put the OAuth pages inside your site's own layout. #}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Connect an app{% endblock %}</title>
+</head>
+<body>
+  <main>{% block body %}{% endblock %}</main>
+</body>
+</html>
