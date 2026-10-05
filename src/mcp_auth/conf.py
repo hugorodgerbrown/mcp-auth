@@ -1,8 +1,8 @@
-"""The hardened django-oauth-toolkit preset, and the TITAN_MCP settings a project sets.
+"""The hardened django-oauth-toolkit preset, and the MCP_AUTH settings a project sets.
 
 ``oauth2_settings()`` returns the whole OAUTH2_PROVIDER dict, so every Titan
 project gets the same token lifetimes, PKCE, RFC 9700 hardening, DCR and CIMD.
-``TITAN_MCP`` holds what differs per project: the scope name, who may connect,
+``MCP_AUTH`` holds what differs per project: the scope name, who may connect,
 and which callbacks a client may register.
 """
 
@@ -18,7 +18,7 @@ CLAUDE_REDIRECT_URI_PATTERNS = [
 LOOPBACK_REDIRECT_URI_PATTERNS = [
     r"^http://(localhost|127\.0\.0\.1|\[::1\])(:\d+)?/[^?#]*$",
 ]
-# Opt in by adding these to TITAN_MCP["REDIRECT_URI_PATTERNS"] (and the two
+# Opt in by adding these to MCP_AUTH["REDIRECT_URI_PATTERNS"] (and the two
 # origins to CONSENT_FORM_ACTION). Host-wide, as Traintracker allows them.
 CHATGPT_REDIRECT_URI_PATTERNS = [
     r"^https://chatgpt\.com/[^?#]*$",
@@ -38,7 +38,7 @@ DEFAULT_CONSENT_FORM_ACTION = [
 
 DEFAULTS: dict[str, Any] = {
     "SCOPE": "mcp",
-    "CAN_CONNECT": "titan_mcp_auth.policy.active_user",
+    "CAN_CONNECT": "mcp_auth.policy.active_user",
     "REDIRECT_URI_PATTERNS": DEFAULT_REDIRECT_URI_PATTERNS,
     "CONSENT_FORM_ACTION": DEFAULT_CONSENT_FORM_ACTION,
     # Requests per minute: per user on the MCP endpoint, per IP on the OAuth
@@ -50,9 +50,9 @@ DEFAULTS: dict[str, Any] = {
 }
 
 
-def titan_setting(name: str) -> Any:
-    """Return one TITAN_MCP setting, falling back to the package default."""
-    return getattr(settings, "TITAN_MCP", {}).get(name, DEFAULTS[name])
+def mcp_auth_setting(name: str) -> Any:
+    """Return one MCP_AUTH setting, falling back to the package default."""
+    return getattr(settings, "MCP_AUTH", {}).get(name, DEFAULTS[name])
 
 
 def oauth2_settings(
@@ -62,9 +62,9 @@ def oauth2_settings(
     scope: str = "mcp",
     **overrides: Any,
 ) -> dict[str, Any]:
-    """Return OAUTH2_PROVIDER for a Titan MCP server.
+    """Return OAUTH2_PROVIDER for an MCP server.
 
-    ``scope`` must match TITAN_MCP["SCOPE"]. ``overrides`` replace preset keys
+    ``scope`` must match MCP_AUTH["SCOPE"]. ``overrides`` replace preset keys
     one for one; anything the preset doesn't set keeps DOT's default.
     """
     preset: dict[str, Any] = {
@@ -98,7 +98,7 @@ def oauth2_settings(
         "OAUTH2_PROTECTED_RESOURCE_NAME": resource_name,
         "DCR_ENABLED": True,
         "DCR_REGISTRATION_PERMISSION_CLASSES": (
-            "titan_mcp_auth.permissions.AllowlistedRedirectRegistration",
+            "mcp_auth.permissions.AllowlistedRedirectRegistration",
         ),
         # A CIMD client's callbacks come from its fetched document; the
         # consent view refuses any that are off the allowlist.

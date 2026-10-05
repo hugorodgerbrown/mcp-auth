@@ -1,8 +1,8 @@
 """Settings for the package's own test suite: a minimal project using the preset."""
 
-from titan_mcp_auth.conf import oauth2_settings
+from mcp_auth.conf import oauth2_settings
 
-SECRET_KEY = "titan-mcp-auth-tests-only"
+SECRET_KEY = "mcp-auth-tests-only"
 DEBUG = False
 ALLOWED_HOSTS = ["testserver"]
 USE_TZ = True
@@ -13,7 +13,7 @@ INSTALLED_APPS = [
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
-    "titan_mcp_auth",
+    "mcp_auth",
     "oauth2_provider",
 ]
 MIDDLEWARE = [
@@ -35,4 +35,4 @@ LOGIN_URL = "/login/"
 PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
 
 OAUTH2_PROVIDER = oauth2_settings(resource_name="Test", scope_description="Use the test tools")
-TITAN_MCP = {"CAN_CONNECT": "titan_mcp_auth.policy.superuser_only"}
+MCP_AUTH = {"CAN_CONNECT": "mcp_auth.policy.superuser_only"}

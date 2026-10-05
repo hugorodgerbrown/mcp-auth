@@ -1,6 +1,6 @@
 """The contract suite, run against the test project (superuser-only rule)."""
 
-from titan_mcp_auth.testing import MCPAuthContract
+from mcp_auth.testing import MCPAuthContract
 
 
 class TestContract(MCPAuthContract):

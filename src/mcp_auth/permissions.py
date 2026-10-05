@@ -1,7 +1,7 @@
 """The redirect allowlist, and the DCR permission that enforces it.
 
 Registration is open (RFC 7591), but only for callbacks on
-TITAN_MCP["REDIRECT_URI_PATTERNS"], so a registration on its own can never
+MCP_AUTH["REDIRECT_URI_PATTERNS"], so a registration on its own can never
 make this server send a signed-in user somewhere else.
 """
 
@@ -10,12 +10,12 @@ import re
 
 from django.http import HttpRequest
 
-from .conf import titan_setting
+from .conf import mcp_auth_setting
 
 
 def redirect_uri_allowed(uri: str) -> bool:
     """Return whether the server may send a browser to ``uri``."""
-    return any(re.match(pattern, uri) for pattern in titan_setting("REDIRECT_URI_PATTERNS"))
+    return any(re.match(pattern, uri) for pattern in mcp_auth_setting("REDIRECT_URI_PATTERNS"))
 
 
 def _all_allowed(body: bytes) -> bool:

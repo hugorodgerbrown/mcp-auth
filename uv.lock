@@ -693,6 +693,73 @@ wheels = [
 ]
 
 [[package]]
+name = "mcp-auth"
+version = "0.1.0"
+source = { editable = "." }
+dependencies = [
+    { name = "django" },
+    { name = "django-oauth-toolkit" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "django-stubs" },
+    { name = "mypy" },
+    { name = "pytest" },
+    { name = "pytest-cov" },
+    { name = "pytest-django" },
+    { name = "ruff" },
+    { name = "tox" },
+    { name = "tox-uv" },
+]
+lint = [
+    { name = "ruff" },
+]
+test = [
+    { name = "pytest" },
+    { name = "pytest-cov" },
+    { name = "pytest-django" },
+]
+types = [
+    { name = "django-stubs" },
+    { name = "mypy" },
+    { name = "pytest" },
+    { name = "pytest-cov" },
+    { name = "pytest-django" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "django", specifier = ">=6.0" },
+    { name = "django-oauth-toolkit", specifier = ">=3.4.1,<4" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "django-stubs", specifier = ">=6.0" },
+    { name = "mypy", specifier = ">=1.18" },
+    { name = "pytest", specifier = ">=8.4" },
+    { name = "pytest-cov", specifier = ">=7.0" },
+    { name = "pytest-django", specifier = ">=4.11" },
+    { name = "ruff", specifier = ">=0.15" },
+    { name = "tox", specifier = ">=4.30" },
+    { name = "tox-uv", specifier = ">=1.0" },
+]
+lint = [{ name = "ruff", specifier = ">=0.15" }]
+test = [
+    { name = "pytest", specifier = ">=8.4" },
+    { name = "pytest-cov", specifier = ">=7.0" },
+    { name = "pytest-django", specifier = ">=4.11" },
+]
+types = [
+    { name = "django-stubs", specifier = ">=6.0" },
+    { name = "mypy", specifier = ">=1.18" },
+    { name = "pytest", specifier = ">=8.4" },
+    { name = "pytest-cov", specifier = ">=7.0" },
+    { name = "pytest-django", specifier = ">=4.11" },
+]
+
+[[package]]
 name = "mypy"
 version = "2.4.0"
 source = { registry = "https://pypi.org/simple" }
@@ -931,73 +998,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/5f/d3/3f06a1006f2261d1342aefb3c71eed02f5d4ca5bdbecd86ebc12ad38306e/sqlparse-0.6.0.tar.gz", hash = "sha256:113c35c75365ab9cc9c7231d68c6428fb11c085fc8e9eb1ad659b7ddbf6cd2b9", size = 178477, upload-time = "2026-08-13T19:16:06.396Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/d9/50/f00935da0ec7cbf325f8dc4f772ae46fbc7b672dd62876e73f0a94adda57/sqlparse-0.6.0-py3-none-any.whl", hash = "sha256:b861c0288ce2fa56209a9a6412d2e066ac664b3873b89c26c9d8415e8e32996f", size = 50070, upload-time = "2026-08-13T19:16:04.062Z" },
-]
-
-[[package]]
-name = "titan-mcp-auth"
-version = "0.1.0"
-source = { editable = "." }
-dependencies = [
-    { name = "django" },
-    { name = "django-oauth-toolkit" },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "django-stubs" },
-    { name = "mypy" },
-    { name = "pytest" },
-    { name = "pytest-cov" },
-    { name = "pytest-django" },
-    { name = "ruff" },
-    { name = "tox" },
-    { name = "tox-uv" },
-]
-lint = [
-    { name = "ruff" },
-]
-test = [
-    { name = "pytest" },
-    { name = "pytest-cov" },
-    { name = "pytest-django" },
-]
-types = [
-    { name = "django-stubs" },
-    { name = "mypy" },
-    { name = "pytest" },
-    { name = "pytest-cov" },
-    { name = "pytest-django" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "django", specifier = ">=6.0" },
-    { name = "django-oauth-toolkit", specifier = ">=3.4.1,<4" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "django-stubs", specifier = ">=6.0" },
-    { name = "mypy", specifier = ">=1.18" },
-    { name = "pytest", specifier = ">=8.4" },
-    { name = "pytest-cov", specifier = ">=7.0" },
-    { name = "pytest-django", specifier = ">=4.11" },
-    { name = "ruff", specifier = ">=0.15" },
-    { name = "tox", specifier = ">=4.30" },
-    { name = "tox-uv", specifier = ">=1.0" },
-]
-lint = [{ name = "ruff", specifier = ">=0.15" }]
-test = [
-    { name = "pytest", specifier = ">=8.4" },
-    { name = "pytest-cov", specifier = ">=7.0" },
-    { name = "pytest-django", specifier = ">=4.11" },
-]
-types = [
-    { name = "django-stubs", specifier = ">=6.0" },
-    { name = "mypy", specifier = ">=1.18" },
-    { name = "pytest", specifier = ">=8.4" },
-    { name = "pytest-cov", specifier = ">=7.0" },
-    { name = "pytest-django", specifier = ">=4.11" },
 ]
 
 [[package]]

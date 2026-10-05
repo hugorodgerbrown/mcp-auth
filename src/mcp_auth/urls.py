@@ -1,4 +1,4 @@
-"""The OAuth URLs, included at the site root: ``path("", include("titan_mcp_auth.urls"))``.
+"""The OAuth URLs, included at the site root: ``path("", include("mcp_auth.urls"))``.
 
 Named as django-oauth-toolkit expects, so its metadata views can reverse
 them. The well-known documents sit at the root, the rest under /oauth/.

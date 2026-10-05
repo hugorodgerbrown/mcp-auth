@@ -18,7 +18,7 @@ from django.views.decorators.csrf import csrf_exempt
 from oauth2_provider.oauth2_backends import get_oauthlib_core
 from oauth2_provider.www_authenticate import build_bearer_challenge, challenge_status
 
-from .conf import titan_setting
+from .conf import mcp_auth_setting
 from .policy import can_connect
 from .ratelimit import over_limit, too_many_requests
 
@@ -55,15 +55,17 @@ def mcp_endpoint(view: Callable[..., HttpResponse]) -> Callable[..., HttpRespons
     def wrapped(request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
         if request.method != "POST":
             return HttpResponse(status=405, headers={"Allow": "POST"})
-        valid, oauth = get_oauthlib_core().verify_request(request, scopes=[titan_setting("SCOPE")])
+        valid, oauth = get_oauthlib_core().verify_request(
+            request, scopes=[mcp_auth_setting("SCOPE")]
+        )
         if not valid:
             return unauthorised(request, getattr(oauth, "oauth2_error", None))
         token = oauth.access_token
-        # DOT treats a token with no resource as good for any audience. Titan
+        # DOT treats a token with no resource as good for any audience. This app
         # does not: every token must name this endpoint.
         if not token.resource or not can_connect(oauth.user):
             return unauthorised(request, INVALID_TOKEN)
-        if over_limit(f"mcp:user:{oauth.user.pk}", titan_setting("USER_RATE_PER_MINUTE")):
+        if over_limit(f"mcp:user:{oauth.user.pk}", mcp_auth_setting("USER_RATE_PER_MINUTE")):
             return _no_store(too_many_requests())
         request.user = oauth.user
         request.mcp_token = token  # type: ignore[attr-defined]

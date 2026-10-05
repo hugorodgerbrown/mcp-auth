@@ -3,7 +3,7 @@
 Every Titan project runs it in its own suite, so a settings or URL change
 that breaks a connector fails that project's build::
 
-    from titan_mcp_auth.testing import MCPAuthContract
+    from mcp_auth.testing import MCPAuthContract
 
     class TestMCPAuth(MCPAuthContract):
         mcp_path = "/mcp"
@@ -33,7 +33,7 @@ from oauth2_provider.models import (
     set_token_value,
 )
 
-from .conf import titan_setting
+from .conf import mcp_auth_setting
 
 CALLBACK = "https://claude.ai/api/mcp/auth_callback"
 OFF_LIST = "https://evil.example/callback"
@@ -89,7 +89,7 @@ class MCPAuthContract:
         token = get_access_token_model()(
             user=user,
             application=app,
-            scope=titan_setting("SCOPE"),
+            scope=mcp_auth_setting("SCOPE"),
             resource=[] if resource == "" else [resource or self.mcp_url],
             expires=timezone.now() + dt.timedelta(seconds=expires_in),
         )
@@ -120,7 +120,7 @@ class MCPAuthContract:
             "code_challenge": challenge,
             "code_challenge_method": "S256",
             "state": "xyz",
-            "scope": f"{titan_setting('SCOPE')} offline_access",
+            "scope": f"{mcp_auth_setting('SCOPE')} offline_access",
             "resource": self.mcp_url,
         }
 

@@ -13,14 +13,14 @@ from typing import Any
 from django.core.cache import cache
 from django.http import HttpRequest, HttpResponse, JsonResponse
 
-from .conf import titan_setting
+from .conf import mcp_auth_setting
 
 WINDOW_SECONDS = 60
 
 
 def over_limit(key: str, per_minute: int) -> bool:
     """Count one hit against ``key`` and return whether it is over ``per_minute``."""
-    bucket = f"titan_mcp_auth:{key}:{int(time.time()) // WINDOW_SECONDS}"
+    bucket = f"mcp_auth:{key}:{int(time.time()) // WINDOW_SECONDS}"
     cache.add(bucket, 0, WINDOW_SECONDS)
     try:
         hits = cache.incr(bucket)
@@ -43,12 +43,12 @@ def too_many_requests() -> HttpResponse:
 
 
 def limit_by_ip(group: str, setting: str) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
-    """Limit a view per client IP to TITAN_MCP[setting] requests a minute."""
+    """Limit a view per client IP to MCP_AUTH[setting] requests a minute."""
 
     def decorator(view: Callable[..., Any]) -> Callable[..., Any]:
         @wraps(view)
         def wrapped(request: HttpRequest, *args: Any, **kwargs: Any) -> Any:
-            if over_limit(f"{group}:{client_ip(request)}", titan_setting(setting)):
+            if over_limit(f"{group}:{client_ip(request)}", mcp_auth_setting(setting)):
                 return too_many_requests()
             return view(request, *args, **kwargs)
 

@@ -17,7 +17,7 @@ from django.core.management.base import BaseCommand, CommandError, CommandParser
 from django.utils import timezone
 from oauth2_provider.models import get_access_token_model, get_application_model, set_token_value
 
-from ...conf import titan_setting
+from ...conf import mcp_auth_setting
 from ...policy import can_connect
 
 CLIENT_NAME = "Local token (mint_mcp_token)"
@@ -44,7 +44,7 @@ class Command(BaseCommand):
         """Find the user, check the connect rule, and mint the token."""
         user = self._user(options["username"])
         if not can_connect(user):
-            raise CommandError(f"{user} may not connect under TITAN_MCP['CAN_CONNECT'].")
+            raise CommandError(f"{user} may not connect under MCP_AUTH['CAN_CONNECT'].")
         if not options["commit"]:
             self.stderr.write(
                 f"Would mint a {options['hours']} h token for {user} on {options['resource']}. "
@@ -65,7 +65,7 @@ class Command(BaseCommand):
         token = get_access_token_model()(
             user=user,
             application=application,
-            scope=titan_setting("SCOPE"),
+            scope=mcp_auth_setting("SCOPE"),
             resource=[options["resource"]],
             expires=timezone.now() + dt.timedelta(hours=options["hours"]),
         )

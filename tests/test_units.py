@@ -9,10 +9,10 @@ from django.core.management import CommandError, call_command
 from django.test import RequestFactory
 from oauth2_provider.models import get_access_token_model
 
-from titan_mcp_auth import policy
-from titan_mcp_auth.conf import oauth2_settings
-from titan_mcp_auth.permissions import AllowlistedRedirectRegistration, redirect_uri_allowed
-from titan_mcp_auth.ratelimit import over_limit
+from mcp_auth import policy
+from mcp_auth.conf import oauth2_settings
+from mcp_auth.permissions import AllowlistedRedirectRegistration, redirect_uri_allowed
+from mcp_auth.ratelimit import over_limit
 
 
 @pytest.fixture(autouse=True)
@@ -57,9 +57,9 @@ def test_redirect_allowlist(uri, allowed):
 
 
 def test_chatgpt_is_opt_in(settings):
-    from titan_mcp_auth.conf import CHATGPT_REDIRECT_URI_PATTERNS, DEFAULT_REDIRECT_URI_PATTERNS
+    from mcp_auth.conf import CHATGPT_REDIRECT_URI_PATTERNS, DEFAULT_REDIRECT_URI_PATTERNS
 
-    settings.TITAN_MCP = {
+    settings.MCP_AUTH = {
         "REDIRECT_URI_PATTERNS": DEFAULT_REDIRECT_URI_PATTERNS + CHATGPT_REDIRECT_URI_PATTERNS
     }
     assert redirect_uri_allowed("https://chatgpt.com/connector_platform_oauth_redirect")
@@ -72,7 +72,7 @@ def test_registration_with_a_bad_body_is_refused(body):
 
 
 def test_active_user_policy(settings, django_user_model):
-    settings.TITAN_MCP = {"CAN_CONNECT": "titan_mcp_auth.policy.active_user"}
+    settings.MCP_AUTH = {"CAN_CONNECT": "mcp_auth.policy.active_user"}
     user = django_user_model.objects.create_user("guest")
     assert policy.can_connect(user)
     user.is_active = False
@@ -86,7 +86,7 @@ def test_over_limit_counts_per_window(settings):
 
 
 def test_ip_limit_on_registration(client, settings):
-    settings.TITAN_MCP = {**settings.TITAN_MCP, "REGISTER_RATE_PER_MINUTE": 1}
+    settings.MCP_AUTH = {**settings.MCP_AUTH, "REGISTER_RATE_PER_MINUTE": 1}
     client.post("/oauth/register/", "{}", content_type="application/json")
     response = client.post("/oauth/register/", "{}", content_type="application/json")
     assert response.status_code == 429
@@ -94,7 +94,7 @@ def test_ip_limit_on_registration(client, settings):
 
 
 def test_user_limit_on_the_mcp_endpoint(client, owner, settings):
-    settings.TITAN_MCP = {**settings.TITAN_MCP, "USER_RATE_PER_MINUTE": 1}
+    settings.MCP_AUTH = {**settings.MCP_AUTH, "USER_RATE_PER_MINUTE": 1}
     token = mint("--commit", "--resource", "http://testserver/mcp")
     headers = {"Authorization": f"Bearer {token}"}
     assert (
@@ -141,7 +141,7 @@ def test_connected_apps_empty_state(client, owner):
 
 
 def test_consent_warns_about_a_loopback_callback(client, owner):
-    from titan_mcp_auth.testing import pkce_pair
+    from mcp_auth.testing import pkce_pair
 
     reg = client.post(
         "/oauth/register/",

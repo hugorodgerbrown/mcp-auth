@@ -3,7 +3,7 @@
 from django.http import HttpRequest, JsonResponse
 from django.urls import include, path
 
-from titan_mcp_auth.resource import mcp_endpoint
+from mcp_auth.resource import mcp_endpoint
 
 
 @mcp_endpoint
@@ -15,6 +15,6 @@ def mcp(request: HttpRequest) -> JsonResponse:
 
 
 urlpatterns = [
-    path("", include("titan_mcp_auth.urls")),
+    path("", include("mcp_auth.urls")),
     path("mcp", mcp, name="mcp"),
 ]

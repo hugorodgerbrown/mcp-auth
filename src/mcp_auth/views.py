@@ -1,7 +1,7 @@
 """The consent page, the RFC 7592 update guard, and the connected-apps page.
 
 Everything else under /oauth/ and /.well-known/ is django-oauth-toolkit's own
-views, mounted by ``titan_mcp_auth.urls``.
+views, mounted by ``mcp_auth.urls``.
 """
 
 from typing import Any
@@ -16,7 +16,7 @@ from django.views.decorators.csp import csp_override
 from django.views.decorators.http import require_POST
 from oauth2_provider import views as oauth_views
 
-from .conf import titan_setting
+from .conf import mcp_auth_setting
 from .connected import connected_apps, disconnect
 from .permissions import redirect_uri_allowed, registration_allowed
 from .policy import can_connect
@@ -29,14 +29,14 @@ def _consent_csp() -> dict[str, Any]:
     without this Allow would be blocked on its way back to the client.
     """
     policy = dict(getattr(settings, "SECURE_CSP", {}))
-    policy["form-action"] = [CSP.SELF, *titan_setting("CONSENT_FORM_ACTION")]
+    policy["form-action"] = [CSP.SELF, *mcp_auth_setting("CONSENT_FORM_ACTION")]
     return policy
 
 
 class ConsentView(oauth_views.AuthorizationView):
     """DOT's authorize view, held to the project's connect rule and the redirect allowlist."""
 
-    template_name = "titan_mcp_auth/authorize.html"
+    template_name = "mcp_auth/authorize.html"
 
     def dispatch(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponseBase:
         """Refuse a user the rule shuts out, and any callback off the allowlist."""
@@ -90,9 +90,7 @@ class RegistrationManagementView(oauth_views.DynamicClientRegistrationManagement
 @login_required
 def connected_apps_view(request: HttpRequest) -> HttpResponse:
     """List the clients this user has connected, each with a Disconnect button."""
-    return render(
-        request, "titan_mcp_auth/connected_apps.html", {"apps": connected_apps(request.user)}
-    )
+    return render(request, "mcp_auth/connected_apps.html", {"apps": connected_apps(request.user)})
 
 
 @login_required

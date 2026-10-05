@@ -1,4 +1,4 @@
-# titan-mcp-auth
+# mcp-auth
 
 Shared OAuth 2.1 authentication for Titan's Django MCP servers. One small
 Django app on top of [django-oauth-toolkit](https://github.com/jazzband/django-oauth-toolkit)
@@ -17,7 +17,7 @@ Design and the comparison of the three projects it came from:
 - `/oauth/connected/`: the user's connected apps, each with Disconnect
 - `@mcp_endpoint`: wraps the project's MCP view
 - `mint_mcp_token`: a token for curl in local development
-- `titan_mcp_auth.testing.MCPAuthContract`: the contract suite every project runs
+- `mcp_auth.testing.MCPAuthContract`: the contract suite every project runs
 
 ## The rules every project inherits
 
@@ -29,7 +29,7 @@ Design and the comparison of the three projects it came from:
    loopback on any port. ChatGPT is opt-in.
 5. The consent page names the host the code goes to, and warns when it is
    the user's own machine.
-6. `TITAN_MCP["CAN_CONNECT"]` runs at consent and on every call, so taking
+6. `MCP_AUTH["CAN_CONNECT"]` runs at consent and on every call, so taking
    a permission away cuts off a user's clients at once.
 7. Access tokens last an hour; refresh tokens 30 days, rotating. A replayed
    refresh token revokes the whole family.
@@ -41,35 +41,35 @@ Design and the comparison of the three projects it came from:
 
 ```toml
 # pyproject.toml
-dependencies = ["titan-mcp-auth @ git+https://github.com/hugorodgerbrown/mcp-auth@v0.1.0"]
+dependencies = ["mcp-auth @ git+https://github.com/hugorodgerbrown/mcp-auth@v0.1.0"]
 ```
 
 ```python
 # settings.py
-from titan_mcp_auth.conf import oauth2_settings
+from mcp_auth.conf import oauth2_settings
 
 INSTALLED_APPS += [
-    "your_app",  # before titan_mcp_auth, if it overrides its templates
-    "titan_mcp_auth",
+    "your_app",  # before mcp_auth, if it overrides its templates
+    "mcp_auth",
     "oauth2_provider",
 ]
 OAUTH2_PROVIDER = oauth2_settings(
     resource_name="Your project",
     scope_description="What a connected app can do, in a phrase",
 )
-TITAN_MCP = {"CAN_CONNECT": "titan_mcp_auth.policy.active_user"}
+MCP_AUTH = {"CAN_CONNECT": "mcp_auth.policy.active_user"}
 LOGIN_URL = "/login/"  # the consent page sends signed-out users here
 ```
 
 ```python
 # urls.py
 urlpatterns = [
-    path("", include("titan_mcp_auth.urls")),
+    path("", include("mcp_auth.urls")),
     path("mcp", mcp, name="mcp"),
 ]
 
 # views.py
-from titan_mcp_auth.resource import mcp_endpoint
+from mcp_auth.resource import mcp_endpoint
 
 
 @mcp_endpoint
@@ -78,7 +78,7 @@ def mcp(request): ...  # request.user is the token's user; request.mcp_token the
 
 ```python
 # tests/test_mcp_auth.py
-from titan_mcp_auth.testing import MCPAuthContract
+from mcp_auth.testing import MCPAuthContract
 
 
 class TestMCPAuth(MCPAuthContract):
@@ -88,19 +88,19 @@ class TestMCPAuth(MCPAuthContract):
     def make_refused_user(self, django_user_model): ...
 ```
 
-Templates to override for the site's look: `titan_mcp_auth/base.html`
-(layout), `titan_mcp_auth/authorize.html` (consent, context adds
+Templates to override for the site's look: `mcp_auth/base.html`
+(layout), `mcp_auth/authorize.html` (consent, context adds
 `redirect_host` and `redirect_is_loopback`) and
-`titan_mcp_auth/connected_apps.html`.
+`mcp_auth/connected_apps.html`.
 
 ## Settings
 
-`TITAN_MCP`, every key optional:
+`MCP_AUTH`, every key optional:
 
 | Key | Default |
 |-----|---------|
 | `SCOPE` | `"mcp"` (pass the same `scope=` to `oauth2_settings`) |
-| `CAN_CONNECT` | `"titan_mcp_auth.policy.active_user"`; also `superuser_only`, or any `user -> bool` |
+| `CAN_CONNECT` | `"mcp_auth.policy.active_user"`; also `superuser_only`, or any `user -> bool` |
 | `REDIRECT_URI_PATTERNS` | Claude + loopback; add `CHATGPT_REDIRECT_URI_PATTERNS` to opt in |
 | `CONSENT_FORM_ACTION` | CSP `form-action` origins for the consent page; must cover every callback |
 | `USER_RATE_PER_MINUTE` | 60 MCP calls per user |
