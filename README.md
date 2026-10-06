@@ -41,7 +41,7 @@ Design and the comparison of the three projects it came from:
 
 ```toml
 # pyproject.toml
-dependencies = ["mcp-auth @ git+https://github.com/hugorodgerbrown/mcp-auth@v0.1.0"]
+dependencies = ["mcp-auth @ git+https://github.com/hugorodgerbrown/mcp-auth@0.1.1"]
 ```
 
 ```python
@@ -89,9 +89,10 @@ class TestMCPAuth(MCPAuthContract):
 ```
 
 Under the default `active_user` rule the only refused account is an inactive
-one, so `make_refused_user` returns a user with `is_active=False`. Django
-won't keep that user signed in, so the contract expects the consent page to
-send it to sign in rather than answer 403.
+one, so `make_refused_user` returns a user with `is_active=False`. Django's
+default backend won't keep that user signed in, so the consent page sends it
+to sign in; a backend that does keep it (`AllowAllUsersModelBackend`) gets a
+403. The contract accepts either.
 
 Templates to override for the site's look: `mcp_auth/base.html`
 (layout), `mcp_auth/authorize.html` (consent, context adds
@@ -132,4 +133,4 @@ uv sync
 uv run tox
 ```
 
-Releases are git tags (`v0.1.0`); projects pin a tag.
+Releases are git tags with no "v" (`0.1.1`); projects pin a tag.
