@@ -5,6 +5,7 @@ views, mounted by ``mcp_auth.urls``.
 """
 
 from typing import Any
+from urllib.parse import urlsplit
 
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
@@ -44,8 +45,11 @@ class ConsentView(oauth_views.AuthorizationView):
             raise PermissionDenied
         # Belt and braces: whatever a client registered, or whatever its CIMD
         # document says, the code only ever goes to an allowlisted callback.
+        # The callback must be named: left out, DOT falls back to the client's
+        # registered default, which a CIMD document can put off the list, and
+        # its error redirects would send the browser there.
         redirect_uri = request.GET.get("redirect_uri") or request.POST.get("redirect_uri")
-        if redirect_uri and not redirect_uri_allowed(redirect_uri):
+        if not redirect_uri or not redirect_uri_allowed(redirect_uri):
             raise PermissionDenied
         view = csp_override(_consent_csp())(super().dispatch)
         response: HttpResponseBase = view(request, *args, **kwargs)
@@ -56,13 +60,9 @@ class ConsentView(oauth_views.AuthorizationView):
         context: dict[str, Any] = super().get_context_data(**kwargs)
         form = context.get("form")
         uri = str(form["redirect_uri"].value() or "") if form is not None else ""
-        host = uri.split("://", 1)[-1].split("/", 1)[0]
-        context["redirect_host"] = host
-        context["redirect_is_loopback"] = host.split(":", 1)[0] in (
-            "localhost",
-            "127.0.0.1",
-            "[::1]",
-        )
+        parts = urlsplit(uri)
+        context["redirect_host"] = parts.netloc
+        context["redirect_is_loopback"] = parts.hostname in ("localhost", "127.0.0.1")
         return context
 
 

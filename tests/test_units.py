@@ -46,7 +46,7 @@ def test_preset_overrides_replace_keys():
         ("https://claude.com/api/mcp/auth_callback", True),
         ("http://localhost:53682/callback", True),
         ("http://127.0.0.1/cb", True),
-        ("http://[::1]:9000/cb", True),
+        ("http://[::1]:9000/cb", False),
         ("https://claude.ai/api/mcp/auth_callback/extra", False),
         ("http://localhost.evil.example/cb", False),
         ("https://chatgpt.com/connector_platform_oauth_redirect", False),
@@ -168,3 +168,27 @@ def test_consent_warns_about_a_loopback_callback(client, owner):
         },
     )
     assert b"a program on your own computer" in page.content
+
+
+def test_an_expired_refresh_token_is_not_a_connection(owner):
+    import datetime as dt
+
+    from django.utils import timezone
+    from oauth2_provider.models import get_application_model, get_refresh_token_model
+
+    from mcp_auth.connected import connected_apps
+
+    app = get_application_model().objects.create(
+        name="Old client",
+        client_type="public",
+        authorization_grant_type="authorization-code",
+        redirect_uris="http://localhost:4567/cb",
+    )
+    refresh = get_refresh_token_model().objects.create(
+        user=owner, application=app, token="r1", token_checksum="c1"
+    )
+    assert connected_apps(owner) == [app]
+    get_refresh_token_model().objects.filter(pk=refresh.pk).update(
+        created=timezone.now() - dt.timedelta(days=31)
+    )
+    assert connected_apps(owner) == []

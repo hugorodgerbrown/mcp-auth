@@ -15,8 +15,10 @@ CLAUDE_REDIRECT_URI_PATTERNS = [
     r"^https://claude\.ai/api/mcp/auth_callback$",
     r"^https://claude\.com/api/mcp/auth_callback$",
 ]
+# Not [::1]: CSP's host-source grammar has no IPv6 literals, so the consent
+# page's form-action could never let the browser through to it.
 LOOPBACK_REDIRECT_URI_PATTERNS = [
-    r"^http://(localhost|127\.0\.0\.1|\[::1\])(:\d+)?/[^?#]*$",
+    r"^http://(localhost|127\.0\.0\.1)(:\d+)?/[^?#]*$",
 ]
 # Opt in by adding these to MCP_AUTH["REDIRECT_URI_PATTERNS"] (and the two
 # origins to CONSENT_FORM_ACTION). Host-wide, as Traintracker allows them.

@@ -215,6 +215,19 @@ class MCPAuthContract:
         params = self.authorize_params(app.client_id, challenge, redirect_uri=OFF_LIST)
         assert client.get("/oauth/authorize/", params).status_code == 403
 
+    def test_consent_refuses_a_request_with_no_callback(self, client, django_user_model):
+        app = get_application_model().objects.create(
+            name="Defaulted",
+            client_type="public",
+            authorization_grant_type="authorization-code",
+            redirect_uris=OFF_LIST,
+        )
+        client.force_login(self.make_allowed_user(django_user_model))
+        _, challenge = pkce_pair()
+        params = self.authorize_params(app.client_id, challenge)
+        del params["redirect_uri"]
+        assert client.get("/oauth/authorize/", params).status_code == 403
+
     def test_consent_page_names_the_callback_host(self, client, django_user_model):
         reg = self.register(client, [CALLBACK]).json()
         client.force_login(self.make_allowed_user(django_user_model))
