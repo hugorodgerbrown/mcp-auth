@@ -1,0 +1,97 @@
+[project]
+name = "mcp-auth"
+version = "0.1.0"
+description = "Shared OAuth 2.1 authentication for Django MCP servers, built on django-oauth-toolkit"
+authors = [
+    { name = "Hugo Rodger-Brown", email = "hugo@rodger-brown.com" }
+]
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "django>=6.0",
+    "django-oauth-toolkit>=3.4.1,<4",
+]
+
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mcp_auth"]
+
+[dependency-groups]
+test = [
+    "pytest>=8.4",
+    "pytest-cov>=7.0",
+    "pytest-django>=4.11",
+]
+lint = [
+    "ruff>=0.15",
+]
+types = [
+    "django-stubs>=6.0",
+    "mypy>=1.18",
+    {include-group = "test"},
+]
+dev = [
+    "tox>=4.30",
+    "tox-uv>=1.0",
+    {include-group = "test"},
+    {include-group = "lint"},
+    {include-group = "types"},
+]
+
+[tool.uv]
+default-groups = ["dev"]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "tests.settings"
+pythonpath = ["."]
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "DJ", "S", "SIM", "C4", "PT", "PIE", "RET", "RUF", "T20", "DTZ"]
+ignore = ["RUF012"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "S105", "S106"]
+# The contract suite is test code that ships inside the package.
+"src/mcp_auth/testing.py" = ["S101", "S105", "S106"]
+
+[tool.mypy]
+python_version = "3.12"
+plugins = ["mypy_django_plugin.main"]
+strict_optional = true
+warn_return_any = true
+warn_unused_configs = true
+warn_unused_ignores = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+mypy_path = "src"
+packages = ["mcp_auth"]
+
+[[tool.mypy.overrides]]
+# django-oauth-toolkit ships no type hints.
+module = ["oauth2_provider.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# The contract suite is typed loosely: fixtures and assertions say enough.
+module = ["mcp_auth.testing"]
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+
+[tool.django-stubs]
+django_settings_module = "tests.settings"
+
+[tool.coverage.run]
+source = ["mcp_auth"]
+
+[tool.coverage.report]
+fail_under = 95
+skip_empty = true
+exclude_also = ["if TYPE_CHECKING:"]
