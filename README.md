@@ -88,6 +88,11 @@ class TestMCPAuth(MCPAuthContract):
     def make_refused_user(self, django_user_model): ...
 ```
 
+Under the default `active_user` rule the only refused account is an inactive
+one, so `make_refused_user` returns a user with `is_active=False`. Django
+won't keep that user signed in, so the contract expects the consent page to
+send it to sign in rather than answer 403.
+
 Templates to override for the site's look: `mcp_auth/base.html`
 (layout), `mcp_auth/authorize.html` (consent, context adds
 `redirect_host` and `redirect_is_loopback`) and
