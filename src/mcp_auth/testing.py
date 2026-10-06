@@ -58,7 +58,13 @@ class MCPAuthContract:
         raise NotImplementedError
 
     def make_refused_user(self, django_user_model):
-        """A user the project's connect rule shuts out."""
+        """A user the project's connect rule shuts out.
+
+        Under ``active_user`` the only refused account is an inactive one;
+        return it with ``is_active=False``. Under Django's default backend it
+        is treated as signed out (sent to sign in); a backend that keeps
+        inactive users signed in gets a 403. The contract accepts either.
+        """
         raise NotImplementedError
 
     @pytest.fixture(autouse=True)
@@ -196,12 +202,21 @@ class MCPAuthContract:
 
     def test_refused_user_cannot_consent(self, client, django_user_model):
         reg = self.register(client, [CALLBACK]).json()
-        client.force_login(self.make_refused_user(django_user_model))
+        refused = self.make_refused_user(django_user_model)
+        client.force_login(refused)
         _, challenge = pkce_pair()
         response = client.get(
             "/oauth/authorize/", self.authorize_params(reg["client_id"], challenge)
         )
-        assert response.status_code == 403
+        if response.status_code == 302 and not refused.is_active:
+            # Django's default backend won't keep an inactive account signed
+            # in (active_user's refused user), so it is sent to sign in like
+            # anyone signed out. A backend that does keep it gets the 403.
+            assert "/oauth/authorize/" in response["Location"]
+            assert "code=" not in response["Location"]
+        else:
+            # Signed in, but the connect rule says no.
+            assert response.status_code == 403
 
     def test_consent_refuses_a_callback_off_the_allowlist(self, client, django_user_model):
         app = get_application_model().objects.create(

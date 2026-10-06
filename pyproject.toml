@@ -1,6 +1,6 @@
 [project]
 name = "mcp-auth"
-version = "0.1.0"
+version = "0.1.1"
 description = "Shared OAuth 2.1 authentication for Django MCP servers, built on django-oauth-toolkit"
 authors = [
     { name = "Hugo Rodger-Brown", email = "hugo@rodger-brown.com" }
