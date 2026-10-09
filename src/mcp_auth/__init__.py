@@ -6,4 +6,4 @@ builds OAUTH2_PROVIDER with ``mcp_auth.conf.oauth2_settings``, includes
 ``mcp_auth.resource.mcp_endpoint``. See README.md.
 """
 
-__version__ = "0.1.1"
+__version__ = "0.1.2"
