@@ -38,6 +38,21 @@ from .conf import mcp_auth_setting
 CALLBACK = "https://claude.ai/api/mcp/auth_callback"
 OFF_LIST = "https://evil.example/callback"
 PING = {"jsonrpc": "2.0", "id": 1, "method": "ping"}
+CLAUDE_CLIENT_ID = "https://claude.ai/oauth/mcp-oauth-client-metadata"
+# Claude's published client metadata document (CIMD), as fetched on 9 October 2026.
+CLAUDE_METADATA = {
+    "client_id": CLAUDE_CLIENT_ID,
+    "client_name": "Claude",
+    "client_uri": "https://claude.ai",
+    "redirect_uris": [CALLBACK],
+    "grant_types": [
+        "authorization_code",
+        "refresh_token",
+        "urn:ietf:params:oauth:grant-type:jwt-bearer",
+    ],
+    "response_types": ["code"],
+    "token_endpoint_auth_method": "none",
+}
 
 
 def pkce_pair() -> tuple[str, str]:
@@ -251,6 +266,25 @@ class MCPAuthContract:
         assert page.status_code == 200
         assert b"claude.ai" in page.content
         assert "https://claude.ai" in page.get("Content-Security-Policy", "https://claude.ai")
+
+    def test_claude_by_its_metadata_document_reaches_consent(
+        self, client, django_user_model, monkeypatch
+    ):
+        from oauth2_provider import cimd
+
+        monkeypatch.setattr(
+            cimd.SafeMetadataFetcher, "fetch", lambda self, client_id: (CLAUDE_METADATA, 3600)
+        )
+        client.force_login(self.make_allowed_user(django_user_model))
+        _, challenge = pkce_pair()
+        page = client.get("/oauth/authorize/", self.authorize_params(CLAUDE_CLIENT_ID, challenge))
+        assert page.status_code == 200, page.content
+
+    def test_registration_accepts_claudes_grant_types(self, client):
+        body = {k: v for k, v in CLAUDE_METADATA.items() if k not in {"client_id", "client_uri"}}
+        response = client.post("/oauth/register/", json.dumps(body), "application/json")
+        assert response.status_code == 201, response.content
+        assert response.json()["grant_types"] == ["authorization_code", "refresh_token"]
 
     # ---------- the whole connection ----------
 

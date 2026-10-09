@@ -8,3 +8,9 @@ class McpAuthConfig(AppConfig):
 
     name = "mcp_auth"
     verbose_name = "MCP auth"
+
+    def ready(self) -> None:
+        """Let Claude connect although its client metadata lists the JWT-bearer grant."""
+        from .grant_types import ignore_unsupported_grant_types
+
+        ignore_unsupported_grant_types()

@@ -25,6 +25,8 @@ Design and the comparison of the three projects it came from:
 2. A token is bound to the project's MCP URL (RFC 8707). A token with no
    resource, or another one, is refused.
 3. PKCE S256 is required; only the authorization code and refresh grants exist.
+   A client may list others (Claude lists the JWT-bearer grant); they are
+   ignored, not refused.
 4. A browser is only ever sent to an allowlisted callback: Claude's, or
    loopback on any port. ChatGPT is opt-in.
 5. The consent page names the host the code goes to, and warns when it is
