@@ -35,6 +35,7 @@ from oauth2_provider.models import (
     set_token_value,
 )
 
+from .accounts import account_name
 from .conf import mcp_auth_setting
 
 CALLBACK = "https://claude.ai/api/mcp/auth_callback"
@@ -333,8 +334,7 @@ class MCPAuthContract:
         _, challenge = pkce_pair()
         page = client.get("/oauth/authorize/", self.authorize_params(reg["client_id"], challenge))
         assert page.status_code == 200
-        name = getattr(user, "email", "") or user.get_username()
-        assert escape(name).encode() in page.content
+        assert escape(account_name(user)).encode() in page.content
         assert b'action="/oauth/switch-account/"' in page.content
         switched = client.post("/oauth/switch-account/", {"next": page.context["consent_path"]})
         assert switched["Location"] == page.context["consent_path"]
