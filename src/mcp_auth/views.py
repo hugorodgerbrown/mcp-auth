@@ -1,4 +1,4 @@
-"""The consent page, the RFC 7592 update guard, server metadata and connected apps.
+"""Consent and switching account, the RFC 7592 update guard, server metadata, connected apps.
 
 Everything else under /oauth/ and /.well-known/ is django-oauth-toolkit's own
 views, mounted by ``mcp_auth.urls``.
@@ -9,10 +9,12 @@ from typing import Any
 from urllib.parse import urlsplit
 
 from django.conf import settings
+from django.contrib.auth import logout
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.http import HttpRequest, HttpResponse, HttpResponseBase, JsonResponse
-from django.shortcuts import get_object_or_404, redirect, render
+from django.shortcuts import get_object_or_404, redirect, render, resolve_url
+from django.urls import reverse
 from django.utils.csp import CSP
 from django.views.decorators.csp import csp_override
 from django.views.decorators.http import require_POST
@@ -58,8 +60,11 @@ class ConsentView(oauth_views.AuthorizationView):
         return response
 
     def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
-        """Add the callback host and whether it is the user's own machine."""
+        """Add the callback host, whether it is the user's own machine, and who is signed in."""
         context: dict[str, Any] = super().get_context_data(**kwargs)
+        user = self.request.user
+        context["account_name"] = getattr(user, "email", "") or user.get_username()
+        context["consent_path"] = self.request.get_full_path()
         form = context.get("form")
         uri = str(form["redirect_uri"].value() or "") if form is not None else ""
         parts = urlsplit(uri)
@@ -105,6 +110,24 @@ class RegistrationManagementView(oauth_views.DynamicClientRegistrationManagement
             )
         response: HttpResponse = super().put(request, *args, **kwargs)
         return response
+
+
+@require_POST
+def switch_account_view(request: HttpRequest) -> HttpResponse:
+    """Sign out from the consent page and come back to it, which then asks who you are.
+
+    ``next`` must be this site's consent page; anything else goes to sign in,
+    so the form can't be used to bounce a browser somewhere else.
+    """
+    next_url = request.POST.get("next", "")
+    parts = urlsplit(next_url)
+    if parts.scheme or parts.netloc or parts.path != reverse("oauth2_provider:authorize"):
+        next_url = resolve_url(settings.LOGIN_URL)
+    logout(request)
+    response = redirect(next_url)
+    # Pages cached while signed in belong to the last account, not the next.
+    response["Clear-Site-Data"] = '"cache"'
+    return response
 
 
 @login_required

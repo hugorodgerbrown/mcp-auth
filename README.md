@@ -33,7 +33,8 @@ Design and the comparison of the three projects it came from:
 4. A browser is only ever sent to an allowlisted callback: Claude's, or
    loopback on any port. ChatGPT is opt-in.
 5. The consent page names the host the code goes to, and warns when it is
-   the user's own machine.
+   the user's own machine. It says which account is signed in, with
+   "Use another account" to sign out and come back to it as someone else.
 6. `MCP_AUTH["CAN_CONNECT"]` runs at consent and on every call, so taking
    a permission away cuts off a user's clients at once.
 7. Access tokens last an hour; refresh tokens 30 days, rotating. A replayed
@@ -46,7 +47,7 @@ Design and the comparison of the three projects it came from:
 
 ```toml
 # pyproject.toml
-dependencies = ["mcp-auth @ git+https://github.com/hugorodgerbrown/mcp-auth@v0.1.3"]
+dependencies = ["mcp-auth @ git+https://github.com/hugorodgerbrown/mcp-auth@v0.1.4"]
 ```
 
 ```python
@@ -100,9 +101,21 @@ to sign in; a backend that does keep it (`AllowAllUsersModelBackend`) gets a
 403. The contract accepts either.
 
 Templates to override for the site's look: `mcp_auth/base.html`
-(layout), `mcp_auth/authorize.html` (consent, context adds
-`redirect_host` and `redirect_is_loopback`) and
-`mcp_auth/connected_apps.html`.
+(layout) and `mcp_auth/connected_apps.html`. The consent page,
+`mcp_auth/authorize.html`, is shared: rather than replace it, extend it and
+override its `heading` and `description` blocks for the site's own words
+(Django lets a template extend the one it overrides):
+
+```django
+{% extends "mcp_auth/authorize.html" %}
+{% block heading %}Connect {{ application.name|default:"this app" }} to Notes?{% endblock %}
+{% block description %}It will be able to read and add your notes.{% endblock %}
+```
+
+Style it through `mcp-auth-account` (the "Signed in as" line),
+`mcp-auth-switch` (its "Use another account" button), `mcp-auth-cancel`
+and `error`. Its context adds `redirect_host`, `redirect_is_loopback`,
+`account_name` and `consent_path`.
 
 ## Settings
 
