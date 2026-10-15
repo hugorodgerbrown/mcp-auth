@@ -47,7 +47,7 @@ Design and the comparison of the three projects it came from:
 
 ```toml
 # pyproject.toml
-dependencies = ["mcp-auth @ git+https://github.com/hugorodgerbrown/mcp-auth@v0.1.4"]
+dependencies = ["mcp-auth @ git+https://github.com/hugorodgerbrown/mcp-auth@v0.1.5"]
 ```
 
 ```python
@@ -125,6 +125,7 @@ and `error`. Its context adds `redirect_host`, `redirect_is_loopback`,
 |-----|---------|
 | `SCOPE` | `"mcp"` (pass the same `scope=` to `oauth2_settings`) |
 | `CAN_CONNECT` | `"mcp_auth.policy.active_user"`; also `superuser_only`, or any `user -> bool` |
+| `ACCOUNT_NAME` | `"mcp_auth.accounts.email_or_username"`, or any `user -> str`: how the consent page names the signed-in account. A project that keeps no email address returns what it keeps (a masked address), never a key |
 | `REDIRECT_URI_PATTERNS` | Claude + loopback; add `CHATGPT_REDIRECT_URI_PATTERNS` to opt in |
 | `CONSENT_FORM_ACTION` | CSP `form-action` origins for the consent page; must cover every callback |
 | `USER_RATE_PER_MINUTE` | 60 MCP calls per user |

@@ -20,6 +20,7 @@ from django.views.decorators.csp import csp_override
 from django.views.decorators.http import require_POST
 from oauth2_provider import views as oauth_views
 
+from .accounts import account_name
 from .auth_methods import SIGNING_ALGORITHMS
 from .conf import mcp_auth_setting
 from .connected import connected_apps, disconnect
@@ -62,8 +63,7 @@ class ConsentView(oauth_views.AuthorizationView):
     def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
         """Add the callback host, whether it is the user's own machine, and who is signed in."""
         context: dict[str, Any] = super().get_context_data(**kwargs)
-        user = self.request.user
-        context["account_name"] = getattr(user, "email", "") or user.get_username()
+        context["account_name"] = account_name(self.request.user)
         context["consent_path"] = self.request.get_full_path()
         form = context.get("form")
         uri = str(form["redirect_uri"].value() or "") if form is not None else ""

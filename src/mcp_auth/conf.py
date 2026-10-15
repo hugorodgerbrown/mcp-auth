@@ -41,6 +41,7 @@ DEFAULT_CONSENT_FORM_ACTION = [
 DEFAULTS: dict[str, Any] = {
     "SCOPE": "mcp",
     "CAN_CONNECT": "mcp_auth.policy.active_user",
+    "ACCOUNT_NAME": "mcp_auth.accounts.email_or_username",
     "REDIRECT_URI_PATTERNS": DEFAULT_REDIRECT_URI_PATTERNS,
     "CONSENT_FORM_ACTION": DEFAULT_CONSENT_FORM_ACTION,
     # Requests per minute: per user on the MCP endpoint, per IP on the OAuth

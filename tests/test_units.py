@@ -190,6 +190,19 @@ def test_consent_names_an_account_without_email_by_username(client, owner):
     assert b"Signed in as <strong>owner</strong>" in page.content
 
 
+def account_label(user):
+    """A project's own rule: what it keeps instead of the address."""
+    return f"masked:{user.get_username()}"
+
+
+def test_consent_names_the_account_by_the_projects_rule(client, owner, settings):
+    settings.MCP_AUTH = {**settings.MCP_AUTH, "ACCOUNT_NAME": "tests.test_units.account_label"}
+    params = consent_params(client)
+    client.force_login(owner)
+    page = client.get("/oauth/authorize/", params)
+    assert b"Signed in as <strong>masked:owner</strong>" in page.content
+
+
 def test_switching_account_signs_out_and_returns_to_consent(client, owner):
     params = consent_params(client)
     client.force_login(owner)
