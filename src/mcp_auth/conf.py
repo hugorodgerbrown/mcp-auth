@@ -90,20 +90,25 @@ def oauth2_settings(
         "COMPLIANT_BCP_RFC9700_TOKEN_STORAGE": True,
         "OAUTH2_RESPONSE_TYPES_SUPPORTED": ["code"],
         "OAUTH2_GRANT_TYPES_SUPPORTED": ["authorization_code", "refresh_token"],
-        # "none" must be listed for Claude to use CIMD. The secret methods stay
-        # because a DCR client may ask for one; PKCE is required either way.
+        # "none" must be listed for Claude to use CIMD, and private_key_jwt for
+        # ChatGPT, whose document declares it (mcp_auth.validators verifies its
+        # assertions). The secret methods stay because a DCR client may ask for
+        # one; PKCE is required either way.
         "OAUTH2_TOKEN_ENDPOINT_AUTH_METHODS_SUPPORTED": [
             "none",
+            "private_key_jwt",
             "client_secret_post",
             "client_secret_basic",
         ],
+        "OAUTH2_VALIDATOR_CLASS": "mcp_auth.validators.Validator",
         "OAUTH2_PROTECTED_RESOURCE_NAME": resource_name,
         "DCR_ENABLED": True,
         "DCR_REGISTRATION_PERMISSION_CLASSES": (
             "mcp_auth.permissions.AllowlistedRedirectRegistration",
         ),
         # A CIMD client's callbacks come from its fetched document; the
-        # consent view refuses any that are off the allowlist.
+        # consent view refuses any that are off the allowlist. A document
+        # declaring private_key_jwt makes a confidential client (auth_methods).
         "CIMD_ENABLED": True,
     }
     return preset | overrides

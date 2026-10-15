@@ -16,7 +16,7 @@ app_name = "oauth2_provider"
 urlpatterns = [
     path(
         ".well-known/oauth-authorization-server",
-        oauth_views.OAuthServerMetadataView.as_view(),
+        views.ServerMetadataView.as_view(),
         name="oauth-server-metadata",
     ),
     path(

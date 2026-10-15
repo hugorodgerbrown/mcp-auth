@@ -1,6 +1,6 @@
 [project]
 name = "mcp-auth"
-version = "0.1.2"
+version = "0.1.3"
 description = "Shared OAuth 2.1 authentication for Django MCP servers, built on django-oauth-toolkit"
 authors = [
     { name = "Hugo Rodger-Brown", email = "hugo@rodger-brown.com" }
@@ -76,7 +76,7 @@ packages = ["mcp_auth"]
 
 [[tool.mypy.overrides]]
 # django-oauth-toolkit ships no type hints.
-module = ["oauth2_provider.*"]
+module = ["oauth2_provider.*", "jwcrypto.*"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]

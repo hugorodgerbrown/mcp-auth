@@ -10,7 +10,12 @@ class McpAuthConfig(AppConfig):
     verbose_name = "MCP auth"
 
     def ready(self) -> None:
-        """Let Claude connect although its client metadata lists the JWT-bearer grant."""
+        """Let Claude and ChatGPT connect by their client metadata documents.
+
+        Claude's lists the JWT-bearer grant; ChatGPT's prefers private_key_jwt.
+        """
+        from .auth_methods import accept_private_key_jwt
         from .grant_types import ignore_unsupported_grant_types
 
         ignore_unsupported_grant_types()
+        accept_private_key_jwt()

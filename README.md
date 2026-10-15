@@ -27,6 +27,9 @@ Design and the comparison of the three projects it came from:
 3. PKCE S256 is required; only the authorization code and refresh grants exist.
    A client may list others (Claude lists the JWT-bearer grant); they are
    ignored, not refused.
+   A metadata-document client that declares `private_key_jwt` (ChatGPT
+   does) is confidential: the token endpoint wants an RFC 7523 assertion
+   signed by a key from its document, each one used once, as well as PKCE.
 4. A browser is only ever sent to an allowlisted callback: Claude's, or
    loopback on any port. ChatGPT is opt-in.
 5. The consent page names the host the code goes to, and warns when it is
@@ -43,7 +46,7 @@ Design and the comparison of the three projects it came from:
 
 ```toml
 # pyproject.toml
-dependencies = ["mcp-auth @ git+https://github.com/hugorodgerbrown/mcp-auth@0.1.1"]
+dependencies = ["mcp-auth @ git+https://github.com/hugorodgerbrown/mcp-auth@v0.1.3"]
 ```
 
 ```python
