@@ -27,6 +27,7 @@ from urllib.parse import parse_qs, urlparse
 import pytest
 from django.core.cache import cache
 from django.utils import timezone
+from django.utils.html import escape
 from jwcrypto import jwk, jwt
 from oauth2_provider.models import (
     get_access_token_model,
@@ -321,6 +322,23 @@ class MCPAuthContract:
         assert page.status_code == 200
         assert b"claude.ai" in page.content
         assert "https://claude.ai" in page.get("Content-Security-Policy", "https://claude.ai")
+
+    def test_consent_page_says_who_is_signed_in_and_offers_a_switch(
+        self, client, django_user_model
+    ):
+        """Someone signed in to the wrong account can see it, and change, before connecting."""
+        reg = self.register(client, [CALLBACK]).json()
+        user = self.make_allowed_user(django_user_model)
+        client.force_login(user)
+        _, challenge = pkce_pair()
+        page = client.get("/oauth/authorize/", self.authorize_params(reg["client_id"], challenge))
+        assert page.status_code == 200
+        name = getattr(user, "email", "") or user.get_username()
+        assert escape(name).encode() in page.content
+        assert b'action="/oauth/switch-account/"' in page.content
+        switched = client.post("/oauth/switch-account/", {"next": page.context["consent_path"]})
+        assert switched["Location"] == page.context["consent_path"]
+        assert client.get(switched["Location"]).status_code == 302
 
     def test_claude_by_its_metadata_document_reaches_consent(
         self, client, django_user_model, monkeypatch

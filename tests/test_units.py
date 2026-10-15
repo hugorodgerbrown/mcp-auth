@@ -140,7 +140,8 @@ def test_connected_apps_empty_state(client, owner):
     assert b"No apps are connected" in client.get("/oauth/connected/").content
 
 
-def test_consent_warns_about_a_loopback_callback(client, owner):
+def consent_params(client):
+    """Register a loopback client and return the authorize query for it."""
     from mcp_auth.testing import pkce_pair
 
     reg = client.post(
@@ -154,20 +155,71 @@ def test_consent_warns_about_a_loopback_callback(client, owner):
         ),
         content_type="application/json",
     ).json()
-    client.force_login(owner)
     _, challenge = pkce_pair()
-    page = client.get(
-        "/oauth/authorize/",
-        {
-            "response_type": "code",
-            "client_id": reg["client_id"],
-            "redirect_uri": "http://localhost:4567/cb",
-            "code_challenge": challenge,
-            "code_challenge_method": "S256",
-            "scope": "mcp",
-        },
-    )
+    return {
+        "response_type": "code",
+        "client_id": reg["client_id"],
+        "redirect_uri": "http://localhost:4567/cb",
+        "code_challenge": challenge,
+        "code_challenge_method": "S256",
+        "scope": "mcp",
+    }
+
+
+def test_consent_warns_about_a_loopback_callback(client, owner):
+    params = consent_params(client)
+    client.force_login(owner)
+    page = client.get("/oauth/authorize/", params)
     assert b"a program on your own computer" in page.content
+
+
+def test_consent_says_who_is_signed_in(client, owner):
+    owner.email = "owner@example.com"
+    owner.save()
+    params = consent_params(client)
+    client.force_login(owner)
+    page = client.get("/oauth/authorize/", params)
+    assert b"Signed in as <strong>owner@example.com</strong>" in page.content
+    assert page.context["consent_path"].startswith("/oauth/authorize/?")
+
+
+def test_consent_names_an_account_without_email_by_username(client, owner):
+    params = consent_params(client)
+    client.force_login(owner)
+    page = client.get("/oauth/authorize/", params)
+    assert b"Signed in as <strong>owner</strong>" in page.content
+
+
+def test_switching_account_signs_out_and_returns_to_consent(client, owner):
+    params = consent_params(client)
+    client.force_login(owner)
+    consent = client.get("/oauth/authorize/", params).context["consent_path"]
+    response = client.post("/oauth/switch-account/", {"next": consent})
+    assert response.status_code == 302
+    assert response["Location"] == consent
+    assert response["Clear-Site-Data"] == '"cache"'
+    assert "_auth_user_id" not in client.session
+    # Signed out, the consent page now asks who you are.
+    again = client.get(consent)
+    assert again.status_code == 302
+    assert again["Location"].startswith("/login/")
+
+
+@pytest.mark.parametrize(
+    "next_url",
+    ["", "https://evil.example/oauth/authorize/", "//evil.example/oauth/authorize/", "/admin/"],
+)
+def test_switching_account_only_returns_to_the_consent_page(client, owner, next_url):
+    client.force_login(owner)
+    response = client.post("/oauth/switch-account/", {"next": next_url})
+    assert response["Location"] == "/login/"
+    assert "_auth_user_id" not in client.session
+
+
+def test_switching_account_wants_a_post(client, owner):
+    client.force_login(owner)
+    assert client.get("/oauth/switch-account/").status_code == 405
+    assert "_auth_user_id" in client.session
 
 
 def test_an_expired_refresh_token_is_not_a_connection(owner):

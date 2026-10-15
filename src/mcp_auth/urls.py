@@ -34,6 +34,7 @@ urlpatterns = [
         limit_by_ip("authorize", "AUTHORIZE_RATE_PER_MINUTE")(views.ConsentView.as_view()),
         name="authorize",
     ),
+    path("oauth/switch-account/", views.switch_account_view, name="switch-account"),
     path(
         "oauth/token/",
         limit_by_ip("token", "TOKEN_RATE_PER_MINUTE")(oauth_views.TokenView.as_view()),
