@@ -27,6 +27,7 @@ from urllib.parse import parse_qs, urlparse
 import pytest
 from django.core.cache import cache
 from django.utils import timezone
+from jwcrypto import jwk, jwt
 from oauth2_provider.models import (
     get_access_token_model,
     get_application_model,
@@ -55,9 +56,10 @@ CLAUDE_METADATA = {
 }
 CHATGPT_CLIENT_ID = "https://chatgpt.com/oauth/client.json"
 CHATGPT_CALLBACK = "https://chatgpt.com/connector_platform_oauth_redirect"
+CHATGPT_JWKS_URI = "https://chatgpt.com/oauth/jwks.json"
 # The fields of ChatGPT's published client metadata document that the toolkit
 # reads, as reported in django-oauth-toolkit issue 1845 (October 2026). It
-# prefers private_key_jwt but can also connect as a public client.
+# authenticates at the token endpoint with a JWT signed by a key at jwks_uri.
 CHATGPT_METADATA = {
     "client_id": CHATGPT_CLIENT_ID,
     "client_name": "ChatGPT",
@@ -67,8 +69,45 @@ CHATGPT_METADATA = {
     "token_endpoint_auth_method": "private_key_jwt",
     "token_endpoint_auth_methods_supported": ["none", "private_key_jwt"],
     "token_endpoint_auth_signing_alg": "RS256",
-    "jwks_uri": "https://chatgpt.com/oauth/jwks.json",
+    "jwks_uri": CHATGPT_JWKS_URI,
 }
+JWT_BEARER = "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
+
+
+def signing_key(kid: str = "test-key"):
+    """A fresh RSA key standing in for ChatGPT's private key."""
+    return jwk.JWK.generate(kty="RSA", size=2048, kid=kid, alg="RS256", use="sig")
+
+
+def public_jwks(*keys) -> dict:
+    """The JWKS a client publishes for ``keys``: public halves only."""
+    return {"keys": [json.loads(key.export_public()) for key in keys]}
+
+
+def serve_client_documents(monkeypatch, metadata, jwks) -> None:
+    """Answer the CIMD fetcher with ``metadata`` for the client and ``jwks`` for its keys."""
+    from oauth2_provider import cimd
+
+    def fetch(self, url):
+        return (jwks if url == metadata.get("jwks_uri") else metadata), 3600
+
+    monkeypatch.setattr(cimd.SafeMetadataFetcher, "fetch", fetch)
+
+
+def client_assertion(key, audience: str, client_id: str = CHATGPT_CLIENT_ID, **claims) -> str:
+    """An RFC 7523 client assertion signed with ``key``; ``claims`` override the defaults."""
+    now = int(timezone.now().timestamp())
+    body = {
+        "iss": client_id,
+        "sub": client_id,
+        "aud": audience,
+        "iat": now,
+        "exp": now + 300,
+        "jti": secrets.token_urlsafe(16),
+    } | claims
+    token = jwt.JWT(header={"alg": "RS256", "kid": key.get("kid")}, claims=body)
+    token.make_signed_token(key)
+    return str(token.serialize())
 
 
 def pkce_pair() -> tuple[str, str]:
@@ -296,12 +335,10 @@ class MCPAuthContract:
         page = client.get("/oauth/authorize/", self.authorize_params(CLAUDE_CLIENT_ID, challenge))
         assert page.status_code == 200, page.content
 
-    def test_chatgpt_by_its_metadata_document_connects_as_public(
+    def test_chatgpt_connects_with_its_signed_client_assertion(
         self, client, django_user_model, monkeypatch, settings
     ):
-        """ChatGPT prefers private_key_jwt but also offers none, so it connects on PKCE."""
-        from oauth2_provider import cimd
-
+        """ChatGPT declares private_key_jwt: the token endpoint wants its signature, once each."""
         from .conf import CHATGPT_REDIRECT_URI_PATTERNS
 
         # ChatGPT is opt-in; opt it in here whatever the project chose.
@@ -316,9 +353,8 @@ class MCPAuthContract:
                 "https://chatgpt.com",
             ],
         }
-        monkeypatch.setattr(
-            cimd.SafeMetadataFetcher, "fetch", lambda self, client_id: (CHATGPT_METADATA, 3600)
-        )
+        key = signing_key()
+        serve_client_documents(monkeypatch, CHATGPT_METADATA, public_jwks(key))
         verifier, challenge = pkce_pair()
         params = self.authorize_params(CHATGPT_CLIENT_ID, challenge, CHATGPT_CALLBACK)
 
@@ -333,22 +369,35 @@ class MCPAuthContract:
         back = urlparse(approved["Location"])
         assert f"{back.scheme}://{back.netloc}{back.path}" == CHATGPT_CALLBACK
         client.logout()
-
-        tokens = client.post(
-            "/oauth/token/",
-            {
-                "grant_type": "authorization_code",
-                "code": parse_qs(back.query)["code"][0],
-                "redirect_uri": CHATGPT_CALLBACK,
-                "client_id": CHATGPT_CLIENT_ID,
-                "code_verifier": verifier,
-                "resource": self.mcp_url,
-            },
+        assert get_application_model().objects.get(client_id=CHATGPT_CLIENT_ID).client_type == (
+            "confidential"
         )
+
+        exchange = {
+            "grant_type": "authorization_code",
+            "code": parse_qs(back.query)["code"][0],
+            "redirect_uri": CHATGPT_CALLBACK,
+            "client_id": CHATGPT_CLIENT_ID,
+            "code_verifier": verifier,
+            "resource": self.mcp_url,
+        }
+        # PKCE alone isn't enough for a client that declared a key.
+        assert client.post("/oauth/token/", exchange).status_code == 401
+        assertion = client_assertion(key, "http://testserver/oauth/token/")
+        signed = {"client_assertion_type": JWT_BEARER, "client_assertion": assertion}
+        tokens = client.post("/oauth/token/", {**exchange, **signed})
         assert tokens.status_code == 200, tokens.content
-        app = get_application_model().objects.get(client_id=CHATGPT_CLIENT_ID)
-        assert app.client_type == "public"
         assert self.call(client, tokens.json()["access_token"]).status_code == 200
+
+        refresh = {"grant_type": "refresh_token", "refresh_token": tokens.json()["refresh_token"]}
+        # An assertion is single use.
+        assert client.post("/oauth/token/", {**refresh, **signed}).status_code == 401
+        fresh = client_assertion(key, "http://testserver")
+        refreshed = client.post(
+            "/oauth/token/",
+            {**refresh, "client_assertion_type": JWT_BEARER, "client_assertion": fresh},
+        )
+        assert refreshed.status_code == 200, refreshed.content
 
     def test_registration_accepts_claudes_grant_types(self, client):
         body = {k: v for k, v in CLAUDE_METADATA.items() if k not in {"client_id", "client_uri"}}

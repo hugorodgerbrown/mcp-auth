@@ -1,9 +1,10 @@
-"""The consent page, the RFC 7592 update guard, and the connected-apps page.
+"""The consent page, the RFC 7592 update guard, server metadata and connected apps.
 
 Everything else under /oauth/ and /.well-known/ is django-oauth-toolkit's own
 views, mounted by ``mcp_auth.urls``.
 """
 
+import json
 from typing import Any
 from urllib.parse import urlsplit
 
@@ -17,6 +18,7 @@ from django.views.decorators.csp import csp_override
 from django.views.decorators.http import require_POST
 from oauth2_provider import views as oauth_views
 
+from .auth_methods import SIGNING_ALGORITHMS
 from .conf import mcp_auth_setting
 from .connected import connected_apps, disconnect
 from .permissions import redirect_uri_allowed, registration_allowed
@@ -64,6 +66,24 @@ class ConsentView(oauth_views.AuthorizationView):
         context["redirect_host"] = parts.netloc
         context["redirect_is_loopback"] = parts.hostname in ("localhost", "127.0.0.1")
         return context
+
+
+class ServerMetadataView(oauth_views.OAuthServerMetadataView):
+    """RFC 8414 metadata, naming the algorithms private_key_jwt assertions may use.
+
+    RFC 8414 requires ``*_auth_signing_alg_values_supported`` wherever
+    ``private_key_jwt`` is listed; the toolkit doesn't add them.
+    """
+
+    def get(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
+        """Add the signing algorithms to the toolkit's document."""
+        response: HttpResponse = super().get(request, *args, **kwargs)
+        data = json.loads(response.content)
+        for endpoint in ("token_endpoint", "revocation_endpoint"):
+            if "private_key_jwt" in data.get(f"{endpoint}_auth_methods_supported", []):
+                data[f"{endpoint}_auth_signing_alg_values_supported"] = list(SIGNING_ALGORITHMS)
+        response.content = json.dumps(data)
+        return response
 
 
 class RegistrationManagementView(oauth_views.DynamicClientRegistrationManagementView):

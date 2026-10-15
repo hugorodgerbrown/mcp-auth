@@ -76,7 +76,7 @@ packages = ["mcp_auth"]
 
 [[tool.mypy.overrides]]
 # django-oauth-toolkit ships no type hints.
-module = ["oauth2_provider.*"]
+module = ["oauth2_provider.*", "jwcrypto.*"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]

@@ -192,39 +192,3 @@ def test_an_expired_refresh_token_is_not_a_connection(owner):
         created=timezone.now() - dt.timedelta(days=31)
     )
     assert connected_apps(owner) == []
-
-
-@pytest.mark.parametrize(
-    "changes",
-    [
-        pytest.param({"token_endpoint_auth_methods_supported": ["private_key_jwt"]}, id="no-none"),
-        pytest.param({"token_endpoint_auth_methods_supported": None}, id="no-list"),
-        pytest.param({"token_endpoint_auth_methods_supported": "none"}, id="not-a-list"),
-        pytest.param({"client_secret": "shh"}, id="secret"),
-    ],
-)
-def test_a_cimd_client_that_cannot_go_public_is_refused(changes):
-    from oauth2_provider import cimd
-
-    from mcp_auth.testing import CHATGPT_METADATA
-
-    metadata = {k: v for k, v in (CHATGPT_METADATA | changes).items() if v is not None}
-    with pytest.raises(cimd.CIMDError):
-        cimd._build_application_kwargs(metadata)
-
-
-def test_a_public_cimd_client_is_untouched():
-    from mcp_auth.auth_methods import public_if_offered
-    from mcp_auth.testing import CLAUDE_METADATA
-
-    assert public_if_offered(CLAUDE_METADATA) is CLAUDE_METADATA
-
-
-def test_the_public_fallback_wraps_the_toolkit_once():
-    from oauth2_provider import cimd
-
-    from mcp_auth.auth_methods import accept_public_fallback
-
-    wrapped = cimd._build_application_kwargs
-    accept_public_fallback()
-    assert cimd._build_application_kwargs is wrapped
