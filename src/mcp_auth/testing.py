@@ -53,6 +53,22 @@ CLAUDE_METADATA = {
     "response_types": ["code"],
     "token_endpoint_auth_method": "none",
 }
+CHATGPT_CLIENT_ID = "https://chatgpt.com/oauth/client.json"
+CHATGPT_CALLBACK = "https://chatgpt.com/connector_platform_oauth_redirect"
+# The fields of ChatGPT's published client metadata document that the toolkit
+# reads, as reported in django-oauth-toolkit issue 1845 (October 2026). It
+# prefers private_key_jwt but can also connect as a public client.
+CHATGPT_METADATA = {
+    "client_id": CHATGPT_CLIENT_ID,
+    "client_name": "ChatGPT",
+    "redirect_uris": [CHATGPT_CALLBACK],
+    "grant_types": ["authorization_code", "refresh_token"],
+    "response_types": ["code"],
+    "token_endpoint_auth_method": "private_key_jwt",
+    "token_endpoint_auth_methods_supported": ["none", "private_key_jwt"],
+    "token_endpoint_auth_signing_alg": "RS256",
+    "jwks_uri": "https://chatgpt.com/oauth/jwks.json",
+}
 
 
 def pkce_pair() -> tuple[str, str]:
@@ -279,6 +295,60 @@ class MCPAuthContract:
         _, challenge = pkce_pair()
         page = client.get("/oauth/authorize/", self.authorize_params(CLAUDE_CLIENT_ID, challenge))
         assert page.status_code == 200, page.content
+
+    def test_chatgpt_by_its_metadata_document_connects_as_public(
+        self, client, django_user_model, monkeypatch, settings
+    ):
+        """ChatGPT prefers private_key_jwt but also offers none, so it connects on PKCE."""
+        from oauth2_provider import cimd
+
+        from .conf import CHATGPT_REDIRECT_URI_PATTERNS
+
+        # ChatGPT is opt-in; opt it in here whatever the project chose.
+        settings.MCP_AUTH = {
+            **getattr(settings, "MCP_AUTH", {}),
+            "REDIRECT_URI_PATTERNS": [
+                *mcp_auth_setting("REDIRECT_URI_PATTERNS"),
+                *CHATGPT_REDIRECT_URI_PATTERNS,
+            ],
+            "CONSENT_FORM_ACTION": [
+                *mcp_auth_setting("CONSENT_FORM_ACTION"),
+                "https://chatgpt.com",
+            ],
+        }
+        monkeypatch.setattr(
+            cimd.SafeMetadataFetcher, "fetch", lambda self, client_id: (CHATGPT_METADATA, 3600)
+        )
+        verifier, challenge = pkce_pair()
+        params = self.authorize_params(CHATGPT_CLIENT_ID, challenge, CHATGPT_CALLBACK)
+
+        client.force_login(self.make_allowed_user(django_user_model))
+        page = client.get("/oauth/authorize/", params)
+        assert page.status_code == 200, page.content
+        form = page.context["form"].initial
+        approved = client.post(
+            "/oauth/authorize/", {**{k: v for k, v in form.items() if v}, "allow": "Authorize"}
+        )
+        assert approved.status_code == 302
+        back = urlparse(approved["Location"])
+        assert f"{back.scheme}://{back.netloc}{back.path}" == CHATGPT_CALLBACK
+        client.logout()
+
+        tokens = client.post(
+            "/oauth/token/",
+            {
+                "grant_type": "authorization_code",
+                "code": parse_qs(back.query)["code"][0],
+                "redirect_uri": CHATGPT_CALLBACK,
+                "client_id": CHATGPT_CLIENT_ID,
+                "code_verifier": verifier,
+                "resource": self.mcp_url,
+            },
+        )
+        assert tokens.status_code == 200, tokens.content
+        app = get_application_model().objects.get(client_id=CHATGPT_CLIENT_ID)
+        assert app.client_type == "public"
+        assert self.call(client, tokens.json()["access_token"]).status_code == 200
 
     def test_registration_accepts_claudes_grant_types(self, client):
         body = {k: v for k, v in CLAUDE_METADATA.items() if k not in {"client_id", "client_uri"}}
