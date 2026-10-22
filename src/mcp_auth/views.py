@@ -20,6 +20,7 @@ from django.utils.csp import CSP
 from django.views.decorators.csp import csp_override
 from django.views.decorators.http import require_POST
 from oauth2_provider import views as oauth_views
+from oauth2_provider.settings import oauth2_settings
 
 from .accounts import account_name
 from .auth_methods import SIGNING_ALGORITHMS
@@ -126,12 +127,16 @@ class ResourceMetadataView(oauth_views.OAuthProtectedResourceMetadataView):
 
     Claude requires ``resource`` to equal the URL the user typed. The toolkit
     strips a trailing slash, so a project whose MCP URL ends in one (``/mcp/``)
-    would publish a resource that never matches.
+    would publish a resource that never matches. A configured
+    ``OAUTH2_PROTECTED_RESOURCE_IDENTIFIER`` is the operator's word and is
+    left exactly as set.
     """
 
     def get_resource(self, request: HttpRequest) -> str:
         """Put back the trailing slash the toolkit strips from the path form."""
         resource: str = super().get_resource(request)
+        if oauth2_settings.OAUTH2_PROTECTED_RESOURCE_IDENTIFIER:
+            return resource
         suffix = request.path.removeprefix("/.well-known/oauth-protected-resource")
         if suffix.endswith("/") and not resource.endswith("/"):
             return f"{resource}/"
