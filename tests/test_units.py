@@ -306,3 +306,17 @@ def test_consent_return_page_is_off_by_default(client, owner, settings):
     )
     assert approved.status_code == 302
     assert approved["Location"].startswith("http://localhost:4567/cb?")
+
+
+@pytest.mark.parametrize(
+    ("path", "resource"),
+    [
+        ("", "http://testserver"),
+        ("/mcp", "http://testserver/mcp"),
+        ("/slashed/mcp/", "http://testserver/slashed/mcp/"),
+    ],
+)
+def test_resource_metadata_names_the_path_exactly(client, path, resource):
+    """The trailing slash is put back only where the URL called had one."""
+    doc = client.get(f"/.well-known/oauth-protected-resource{path}").json()
+    assert doc["resource"] == resource

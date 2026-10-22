@@ -17,4 +17,6 @@ def mcp(request: HttpRequest) -> JsonResponse:
 urlpatterns = [
     path("", include("mcp_auth.urls")),
     path("mcp", mcp, name="mcp"),
+    # A project whose MCP URL ends in a slash (Snowdesk's /api/mcp/).
+    path("slashed/mcp/", mcp, name="mcp-slashed"),
 ]

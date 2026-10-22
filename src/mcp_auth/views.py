@@ -121,6 +121,23 @@ class ServerMetadataView(oauth_views.OAuthServerMetadataView):
         return response
 
 
+class ResourceMetadataView(oauth_views.OAuthProtectedResourceMetadataView):
+    """RFC 9728 metadata whose ``resource`` is the path called, trailing slash kept.
+
+    Claude requires ``resource`` to equal the URL the user typed. The toolkit
+    strips a trailing slash, so a project whose MCP URL ends in one (``/mcp/``)
+    would publish a resource that never matches.
+    """
+
+    def get_resource(self, request: HttpRequest) -> str:
+        """Put back the trailing slash the toolkit strips from the path form."""
+        resource: str = super().get_resource(request)
+        suffix = request.path.removeprefix("/.well-known/oauth-protected-resource")
+        if suffix.endswith("/") and not resource.endswith("/"):
+            return f"{resource}/"
+        return resource
+
+
 class RegistrationManagementView(oauth_views.DynamicClientRegistrationManagementView):
     """RFC 7592 updates, held to the same allowlist as registration.
 

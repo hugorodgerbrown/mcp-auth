@@ -23,7 +23,9 @@ Design and the comparison of the three projects it came from:
 
 1. The MCP endpoint answers only to a bearer token. No anonymous tier.
 2. A token is bound to the project's MCP URL (RFC 8707). A token with no
-   resource, or another one, is refused.
+   resource, or another one, is refused. The protected-resource document's
+   `resource` is that URL exactly, trailing slash included, as Claude
+   requires.
 3. PKCE S256 is required; only the authorization code and refresh grants exist.
    A client may list others (Claude lists the JWT-bearer grant); they are
    ignored, not refused.
@@ -47,7 +49,7 @@ Design and the comparison of the three projects it came from:
 
 ```toml
 # pyproject.toml
-dependencies = ["mcp-auth @ git+https://github.com/hugorodgerbrown/mcp-auth@v0.1.6"]
+dependencies = ["mcp-auth @ git+https://github.com/hugorodgerbrown/mcp-auth@v0.1.7"]
 ```
 
 ```python
