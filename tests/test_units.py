@@ -257,3 +257,52 @@ def test_an_expired_refresh_token_is_not_a_connection(owner):
         created=timezone.now() - dt.timedelta(days=31)
     )
     assert connected_apps(owner) == []
+
+
+def answer_consent(client, owner, settings, **extra):
+    """Open the consent page for a loopback client and post it back."""
+    settings.MCP_AUTH = {**settings.MCP_AUTH, "CONSENT_RETURN": "page"}
+    params = {**consent_params(client), "state": "s1"}
+    client.force_login(owner)
+    form = client.get("/oauth/authorize/", params).context["form"].initial
+    return client.post("/oauth/authorize/", {**{k: v for k, v in form.items() if v}, **extra})
+
+
+def test_consent_return_page_moves_on_with_a_meta_refresh(client, owner, settings):
+    page = answer_consent(client, owner, settings, allow="Authorize")
+    assert page.status_code == 200
+    assert "Location" not in page
+    target = page.context["target"]
+    assert target.startswith("http://localhost:4567/cb?")
+    assert "code=" in target
+    body = page.content.decode()
+    assert '<meta http-equiv="refresh" content="0;url=http://localhost:4567/cb?' in body
+    assert "&amp;state=s1" in body  # escaped in the attribute
+    assert page["Cache-Control"] == "no-store"
+    assert page["Referrer-Policy"] == "no-referrer"
+
+
+def test_consent_return_page_carries_a_cancel_too(client, owner, settings):
+    page = answer_consent(client, owner, settings)
+    assert "error=access_denied" in page.context["target"]
+
+
+def test_consent_return_page_leaves_other_answers_alone(client, owner, settings):
+    """A POST that doesn't go back to the callback (signed out) still redirects."""
+    settings.MCP_AUTH = {**settings.MCP_AUTH, "CONSENT_RETURN": "page"}
+    params = consent_params(client)
+    response = client.post("/oauth/authorize/?" + "&".join(f"{k}={v}" for k, v in params.items()))
+    assert response.status_code == 302
+    assert response["Location"].startswith("/login/")
+
+
+def test_consent_return_page_is_off_by_default(client, owner, settings):
+    settings.MCP_AUTH = {**settings.MCP_AUTH, "CONSENT_RETURN": "redirect"}
+    params = consent_params(client)
+    client.force_login(owner)
+    form = client.get("/oauth/authorize/", params).context["form"].initial
+    approved = client.post(
+        "/oauth/authorize/", {**{k: v for k, v in form.items() if v}, "allow": "Authorize"}
+    )
+    assert approved.status_code == 302
+    assert approved["Location"].startswith("http://localhost:4567/cb?")

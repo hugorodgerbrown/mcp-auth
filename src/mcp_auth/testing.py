@@ -202,6 +202,21 @@ class MCPAuthContract:
             "resource": self.mcp_url,
         }
 
+    def callback_url(self, response):
+        """Return where an answered consent page sends the browser.
+
+        A 302's Location, or, under ``CONSENT_RETURN = "page"``, the target
+        of the page that moves on with a meta refresh.
+        """
+        if mcp_auth_setting("CONSENT_RETURN") == "page":
+            assert response.status_code == 200, response.content
+            assert response["Referrer-Policy"] == "no-referrer"
+            target = response.context["target"]
+            assert f'content="0;url={escape(target)}"' in response.content.decode()
+            return target
+        assert response.status_code == 302
+        return response["Location"]
+
     # ---------- discovery ----------
 
     def test_no_token_is_a_401_naming_the_resource_metadata(self, client):
@@ -322,7 +337,10 @@ class MCPAuthContract:
         page = client.get("/oauth/authorize/", self.authorize_params(reg["client_id"], challenge))
         assert page.status_code == 200
         assert b"claude.ai" in page.content
-        assert "https://claude.ai" in page.get("Content-Security-Policy", "https://claude.ai")
+        if mcp_auth_setting("CONSENT_RETURN") == "redirect":
+            # Only a 302 after the form post needs the callback in form-action;
+            # the returning page's meta refresh isn't a form submission.
+            assert "https://claude.ai" in page.get("Content-Security-Policy", "https://claude.ai")
 
     def test_consent_page_says_who_is_signed_in_and_offers_a_switch(
         self, client, django_user_model
@@ -383,8 +401,7 @@ class MCPAuthContract:
         approved = client.post(
             "/oauth/authorize/", {**{k: v for k, v in form.items() if v}, "allow": "Authorize"}
         )
-        assert approved.status_code == 302
-        back = urlparse(approved["Location"])
+        back = urlparse(self.callback_url(approved))
         assert f"{back.scheme}://{back.netloc}{back.path}" == CHATGPT_CALLBACK
         client.logout()
         assert get_application_model().objects.get(client_id=CHATGPT_CLIENT_ID).client_type == (
@@ -437,8 +454,7 @@ class MCPAuthContract:
         approved = client.post(
             "/oauth/authorize/", {**{k: v for k, v in form.items() if v}, "allow": "Authorize"}
         )
-        assert approved.status_code == 302
-        back = urlparse(approved["Location"])
+        back = urlparse(self.callback_url(approved))
         assert f"{back.scheme}://{back.netloc}{back.path}" == CALLBACK
         query = parse_qs(back.query)
         assert query["state"] == ["xyz"]

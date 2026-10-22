@@ -1,0 +1,12 @@
+{% extends "mcp_auth/base.html" %}
+{% comment %}
+Sent after Allow or Cancel when MCP_AUTH["CONSENT_RETURN"] is "page": it
+moves on to the client's callback with a meta refresh, which a CSP
+form-action doesn't cover, and links to it in case the browser doesn't.
+{% endcomment %}
+{% block title %}Returning to {{ redirect_host }}{% endblock %}
+{% block head %}<meta http-equiv="refresh" content="0;url={{ target }}">{% endblock %}
+{% block body %}
+  <h1>Returning to {{ redirect_host }}</h1>
+  <p>If nothing happens, <a class="mcp-auth-continue" href="{{ target }}">continue</a>.</p>
+{% endblock %}

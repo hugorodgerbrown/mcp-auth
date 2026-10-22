@@ -47,7 +47,7 @@ Design and the comparison of the three projects it came from:
 
 ```toml
 # pyproject.toml
-dependencies = ["mcp-auth @ git+https://github.com/hugorodgerbrown/mcp-auth@v0.1.5"]
+dependencies = ["mcp-auth @ git+https://github.com/hugorodgerbrown/mcp-auth@v0.1.6"]
 ```
 
 ```python
@@ -128,13 +128,19 @@ and `error`. Its context adds `redirect_host`, `redirect_is_loopback`,
 | `ACCOUNT_NAME` | `"mcp_auth.accounts.email_or_username"`, or any `user -> str`: how the consent page names the signed-in account. A project that keeps no email address returns what it keeps (a masked address), never a key |
 | `REDIRECT_URI_PATTERNS` | Claude + loopback; add `CHATGPT_REDIRECT_URI_PATTERNS` to opt in |
 | `CONSENT_FORM_ACTION` | CSP `form-action` origins for the consent page; must cover every callback |
+| `CONSENT_RETURN` | `"redirect"`: Allow and Cancel answer with a 302 to the callback. `"page"`: they answer with `mcp_auth/returning.html`, which moves on with a meta refresh and a link, for a project whose CSP the consent view can't widen |
 | `USER_RATE_PER_MINUTE` | 60 MCP calls per user |
 | `TOKEN_RATE_PER_MINUTE` | 60 per IP |
 | `REGISTER_RATE_PER_MINUTE` | 10 per IP |
 | `AUTHORIZE_RATE_PER_MINUTE` | 30 per IP |
 
 The consent page sets its own `form-action` through Django's `csp_override`,
-so it needs Django 6's built-in CSP (`SECURE_CSP`). Rate limits use the
+so it needs Django 6's built-in CSP (`SECURE_CSP`). A project whose CSP comes
+from other middleware (django-csp, django-csp-plus) can't be widened that way,
+and Chrome applies `form-action 'self'` to the redirect after Allow; set
+`CONSENT_RETURN = "page"` instead. A meta refresh is a navigation, not a form
+submission, so `form-action` doesn't cover it. If you override
+`mcp_auth/base.html`, keep its `head` block, which carries the refresh. Rate limits use the
 default cache; with the per-process LocMemCache they are per worker.
 
 ## Local testing
