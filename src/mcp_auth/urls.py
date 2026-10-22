@@ -21,12 +21,12 @@ urlpatterns = [
     ),
     path(
         ".well-known/oauth-protected-resource",
-        oauth_views.OAuthProtectedResourceMetadataView.as_view(),
+        views.ResourceMetadataView.as_view(),
         name="oauth-resource-metadata",
     ),
     path(
         ".well-known/oauth-protected-resource/<path:resource_path>",
-        oauth_views.OAuthProtectedResourceMetadataView.as_view(),
+        views.ResourceMetadataView.as_view(),
         name="oauth-resource-metadata-path",
     ),
     path(

@@ -40,3 +40,9 @@ class TestContractConsentReturnPage(TestContractActiveUser):
             "CAN_CONNECT": "mcp_auth.policy.active_user",
             "CONSENT_RETURN": "page",
         }
+
+
+class TestContractSlashedPath(TestContractActiveUser):
+    """The same, for an MCP URL that ends in a slash: its resource keeps it."""
+
+    mcp_path = "/slashed/mcp/"
