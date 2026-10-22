@@ -44,6 +44,10 @@ DEFAULTS: dict[str, Any] = {
     "ACCOUNT_NAME": "mcp_auth.accounts.email_or_username",
     "REDIRECT_URI_PATTERNS": DEFAULT_REDIRECT_URI_PATTERNS,
     "CONSENT_FORM_ACTION": DEFAULT_CONSENT_FORM_ACTION,
+    # How Allow and Cancel send the browser back: "redirect" (a 302, under
+    # the widened form-action below) or "page", a page that moves on with a
+    # meta refresh, for a project whose CSP the consent view can't change.
+    "CONSENT_RETURN": "redirect",
     # Requests per minute: per user on the MCP endpoint, per IP on the OAuth
     # endpoints anyone can reach without signing in.
     "USER_RATE_PER_MINUTE": 60,

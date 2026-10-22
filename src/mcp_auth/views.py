@@ -14,6 +14,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.http import HttpRequest, HttpResponse, HttpResponseBase, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render, resolve_url
+from django.template.response import TemplateResponse
 from django.urls import reverse
 from django.utils.csp import CSP
 from django.views.decorators.csp import csp_override
@@ -58,6 +59,8 @@ class ConsentView(oauth_views.AuthorizationView):
             raise PermissionDenied
         view = csp_override(_consent_csp())(super().dispatch)
         response: HttpResponseBase = view(request, *args, **kwargs)
+        if request.method == "POST" and mcp_auth_setting("CONSENT_RETURN") == "page":
+            return _returning_page(request, response, redirect_uri)
         return response
 
     def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
@@ -71,6 +74,33 @@ class ConsentView(oauth_views.AuthorizationView):
         context["redirect_host"] = parts.netloc
         context["redirect_is_loopback"] = parts.hostname in ("localhost", "127.0.0.1")
         return context
+
+
+def _returning_page(
+    request: HttpRequest, response: HttpResponseBase, redirect_uri: str
+) -> HttpResponseBase:
+    """Swap the consent POST's redirect to the callback for a page that moves on.
+
+    For a project whose CSP comes from middleware that ``csp_override``
+    can't reach: its ``form-action 'self'`` then blocks the redirect after
+    Allow. A meta refresh is a navigation, not a form submission, so it
+    gets through. Any other response (the form again, a sign-in redirect)
+    is left alone.
+    """
+    location = response.get("Location", "") if response.status_code in (301, 302, 303) else ""
+    target = urlsplit(location)
+    callback = urlsplit(redirect_uri)
+    if not location or target[:3] != callback[:3]:
+        return response
+    page = TemplateResponse(
+        request,
+        "mcp_auth/returning.html",
+        {"target": location, "redirect_host": callback.netloc},
+    )
+    page["Cache-Control"] = "no-store"
+    # The code is in the URL; don't hand it on to the client as a referrer.
+    page["Referrer-Policy"] = "no-referrer"
+    return page
 
 
 class ServerMetadataView(oauth_views.OAuthServerMetadataView):

@@ -29,3 +29,14 @@ class TestContractActiveUserAllowAllBackend(TestContractActiveUser):
         settings.AUTHENTICATION_BACKENDS = [
             "django.contrib.auth.backends.AllowAllUsersModelBackend"
         ]
+
+
+class TestContractConsentReturnPage(TestContractActiveUser):
+    """The same, sending the browser back with a page instead of a 302."""
+
+    @pytest.fixture(autouse=True)
+    def _active_user_rule(self, settings):
+        settings.MCP_AUTH = {
+            "CAN_CONNECT": "mcp_auth.policy.active_user",
+            "CONSENT_RETURN": "page",
+        }

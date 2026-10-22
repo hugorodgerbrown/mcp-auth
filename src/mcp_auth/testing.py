@@ -202,6 +202,21 @@ class MCPAuthContract:
             "resource": self.mcp_url,
         }
 
+    def callback_url(self, response):
+        """Return where an answered consent page sends the browser.
+
+        A 302's Location, or, under ``CONSENT_RETURN = "page"``, the target
+        of the page that moves on with a meta refresh.
+        """
+        if mcp_auth_setting("CONSENT_RETURN") == "page":
+            assert response.status_code == 200, response.content
+            assert response["Referrer-Policy"] == "no-referrer"
+            target = response.context["target"]
+            assert f'content="0;url={escape(target)}"' in response.content.decode()
+            return target
+        assert response.status_code == 302
+        return response["Location"]
+
     # ---------- discovery ----------
 
     def test_no_token_is_a_401_naming_the_resource_metadata(self, client):
@@ -383,8 +398,7 @@ class MCPAuthContract:
         approved = client.post(
             "/oauth/authorize/", {**{k: v for k, v in form.items() if v}, "allow": "Authorize"}
         )
-        assert approved.status_code == 302
-        back = urlparse(approved["Location"])
+        back = urlparse(self.callback_url(approved))
         assert f"{back.scheme}://{back.netloc}{back.path}" == CHATGPT_CALLBACK
         client.logout()
         assert get_application_model().objects.get(client_id=CHATGPT_CLIENT_ID).client_type == (
@@ -437,8 +451,7 @@ class MCPAuthContract:
         approved = client.post(
             "/oauth/authorize/", {**{k: v for k, v in form.items() if v}, "allow": "Authorize"}
         )
-        assert approved.status_code == 302
-        back = urlparse(approved["Location"])
+        back = urlparse(self.callback_url(approved))
         assert f"{back.scheme}://{back.netloc}{back.path}" == CALLBACK
         query = parse_qs(back.query)
         assert query["state"] == ["xyz"]
