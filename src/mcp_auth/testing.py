@@ -337,7 +337,10 @@ class MCPAuthContract:
         page = client.get("/oauth/authorize/", self.authorize_params(reg["client_id"], challenge))
         assert page.status_code == 200
         assert b"claude.ai" in page.content
-        assert "https://claude.ai" in page.get("Content-Security-Policy", "https://claude.ai")
+        if mcp_auth_setting("CONSENT_RETURN") == "redirect":
+            # Only a 302 after the form post needs the callback in form-action;
+            # the returning page's meta refresh isn't a form submission.
+            assert "https://claude.ai" in page.get("Content-Security-Policy", "https://claude.ai")
 
     def test_consent_page_says_who_is_signed_in_and_offers_a_switch(
         self, client, django_user_model
