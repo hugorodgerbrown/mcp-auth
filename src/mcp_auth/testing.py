@@ -269,6 +269,52 @@ class MCPAuthContract:
         response = client.put(path, json.dumps(body), "application/json", headers=headers)
         assert response.status_code == 400
 
+    @pytest.mark.parametrize(
+        "grant_type",
+        [
+            "client_credentials",
+            "password",
+            "implicit",
+            "urn:ietf:params:oauth:grant-type:device_code",
+        ],
+    )
+    def test_registration_refuses_every_grant_but_the_code(self, client, grant_type):
+        """Registration is open, so it must never make a client that gets a userless token."""
+        body = {
+            "client_name": "Anyone",
+            "redirect_uris": [CALLBACK],
+            "grant_types": [grant_type],
+            "token_endpoint_auth_method": "client_secret_post",
+        }
+        response = client.post("/oauth/register/", json.dumps(body), "application/json")
+        assert response.status_code == 400, response.content
+        assert response.json()["error"] == "invalid_client_metadata"
+        assert not get_application_model().objects.exists()
+
+    def test_a_registered_client_gets_no_userless_token(self, client):
+        """Even a client_credentials row that registration made before it refused them."""
+        Application = get_application_model()
+        secret = secrets.token_urlsafe(32)
+        app = Application.objects.create(
+            name="Anyone",
+            client_type=Application.CLIENT_CONFIDENTIAL,
+            authorization_grant_type=Application.GRANT_CLIENT_CREDENTIALS,
+            client_secret=secret,
+            registration_source=Application.RegistrationSource.DCR,
+        )
+        response = client.post(
+            "/oauth/token/",
+            {
+                "grant_type": "client_credentials",
+                "client_id": app.client_id,
+                "client_secret": secret,
+                "scope": mcp_auth_setting("SCOPE"),
+                "resource": self.mcp_url,
+            },
+        )
+        assert response.status_code == 400, response.content
+        assert "access_token" not in response.json()
+
     def test_authorize_needs_pkce(self, client, django_user_model):
         reg = self.register(client, [CALLBACK]).json()
         client.force_login(self.make_allowed_user(django_user_model))
