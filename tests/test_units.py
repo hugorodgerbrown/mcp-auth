@@ -330,3 +330,66 @@ def test_a_configured_resource_identifier_is_left_as_set(client, settings):
     }
     doc = client.get("/.well-known/oauth-protected-resource/slashed/mcp/").json()
     assert doc["resource"] == "https://api.example.com/mcp"
+
+
+def test_a_client_made_by_hand_still_gets_client_credentials(client, db):
+    """Service clients stay possible: only registration can't make one."""
+    from oauth2_provider.models import get_application_model
+
+    Application = get_application_model()
+    app = Application.objects.create(
+        name="Feed",
+        client_type=Application.CLIENT_CONFIDENTIAL,
+        authorization_grant_type=Application.GRANT_CLIENT_CREDENTIALS,
+        client_secret="s3cret",
+    )
+    assert app.registration_source == Application.RegistrationSource.MANUAL
+    response = client.post(
+        "/oauth/token/",
+        {"grant_type": "client_credentials", "client_id": app.client_id, "client_secret": "s3cret"},
+    )
+    assert response.status_code == 200, response.content
+
+
+def test_registration_update_refuses_every_grant_but_the_code(client, db):
+    body = {
+        "redirect_uris": ["http://localhost:4567/callback"],
+        "token_endpoint_auth_method": "client_secret_post",
+    }
+    reg = client.post("/oauth/register/", json.dumps(body), "application/json").json()
+    headers = {"Authorization": f"Bearer {reg['registration_access_token']}"}
+    body["grant_types"] = ["client_credentials"]
+    response = client.put(
+        f"/oauth/register/{reg['client_id']}/",
+        json.dumps(body),
+        "application/json",
+        headers=headers,
+    )
+    assert response.status_code == 400
+    assert response.json() == {
+        "error": "invalid_client_metadata",
+        "error_description": "unsupported grant_type: 'client_credentials'",
+    }
+
+
+def test_a_metadata_document_for_the_implicit_grant_is_refused():
+    from oauth2_provider import cimd
+
+    from mcp_auth.testing import CLAUDE_METADATA
+
+    with pytest.raises(cimd.CIMDError, match="'implicit'"):
+        cimd._build_application_kwargs(CLAUDE_METADATA | {"grant_types": ["implicit"]})
+    assert cimd._build_application_kwargs(CLAUDE_METADATA)["authorization_grant_type"] == (
+        "authorization-code"
+    )
+
+
+def test_registration_checks_are_wrapped_once():
+    from django.apps import apps
+    from oauth2_provider import cimd
+    from oauth2_provider.views import dynamic_client_registration
+
+    before = (cimd._build_application_kwargs, dynamic_client_registration._build_application_kwargs)
+    apps.get_app_config("mcp_auth").ready()
+    after = (cimd._build_application_kwargs, dynamic_client_registration._build_application_kwargs)
+    assert after == before

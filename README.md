@@ -28,7 +28,10 @@ Design and the comparison of the three projects it came from:
    requires.
 3. PKCE S256 is required; only the authorization code and refresh grants exist.
    A client may list others (Claude lists the JWT-bearer grant); they are
-   ignored, not refused.
+   ignored, not refused. A registration asking for any other grant
+   (`client_credentials`, `password`, `implicit`, the device code) is refused,
+   by DCR and CIMD alike, and the token endpoint refuses those grants to any
+   client not made by hand. A service client with no user is made in the admin.
    A metadata-document client that declares `private_key_jwt` (ChatGPT
    does) is confidential: the token endpoint wants an RFC 7523 assertion
    signed by a key from its document, each one used once, as well as PKCE.
@@ -49,7 +52,7 @@ Design and the comparison of the three projects it came from:
 
 ```toml
 # pyproject.toml
-dependencies = ["mcp-auth @ git+https://github.com/hugorodgerbrown/mcp-auth@v0.1.7"]
+dependencies = ["mcp-auth @ git+https://github.com/hugorodgerbrown/mcp-auth@v0.1.8"]
 ```
 
 ```python

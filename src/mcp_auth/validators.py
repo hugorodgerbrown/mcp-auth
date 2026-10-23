@@ -7,6 +7,10 @@ are fetched with the toolkit's SSRF-hardened CIMD fetcher and cached for the
 document's max-age; an unknown ``kid`` refetches them, at most once a minute,
 for key rotation.
 Each assertion's ``jti`` is single use.
+
+It also holds a client registered by DCR or CIMD to the grants registration
+offers (see ``grant_types``), so a client with no user behind it can only be
+made by hand.
 """
 
 import hashlib
@@ -26,6 +30,7 @@ from oauth2_provider.oauth2_validators import OAuth2Validator
 from oauth2_provider.settings import oauth2_settings
 
 from .auth_methods import PRIVATE_KEY_JWT, SIGNING_ALGORITHMS, check_private_key_jwt
+from .grant_types import REGISTERED_GRANT_TYPES
 
 logger = logging.getLogger(__name__)
 
@@ -160,6 +165,25 @@ def _audiences(request: Any) -> set[str]:
 
 class Validator(OAuth2Validator):
     """The toolkit's validator, plus private_key_jwt client assertions for CIMD clients."""
+
+    def validate_grant_type(
+        self, client_id: str, grant_type: str, client: Any, request: Any, *args: Any, **kwargs: Any
+    ) -> bool:
+        """Refuse a registered client any grant registration doesn't offer.
+
+        Registration already refuses them; this also covers a row registered
+        before it did. ``client_credentials`` and the rest are for clients made
+        by hand, in the admin.
+        """
+        if (
+            grant_type not in REGISTERED_GRANT_TYPES
+            and request.client.registration_source != request.client.RegistrationSource.MANUAL
+        ):
+            return False
+        allowed: bool = super().validate_grant_type(
+            client_id, grant_type, client, request, *args, **kwargs
+        )
+        return allowed
 
     def authenticate_client(self, request: Any, *args: Any, **kwargs: Any) -> bool:
         """Authenticate by client assertion when one is sent, else as the toolkit does."""
